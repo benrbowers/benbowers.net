@@ -1,0 +1,96 @@
+html {
+    height: 100%;
+}
+
+body {
+    font-family: Helvetica, sans-serif;
+    font-weight: 100;
+    margin: 0;
+    background-color: #1e1e1e;
+    overflow: hidden;
+}
+
+.header { 
+    pointer-events: none;
+    padding: 0px;
+    color: white;
+    text-align: center;
+}
+.header h1 {
+    margin: 0px;
+    font-size: 128px;
+    font-weight: 100;
+}
+
+.header p {
+    margin: 0px;
+    font-size: 64px;
+}
+
+.highlight {
+    color: gold;
+}
+
+.navbar a {
+    display: inline-block;
+    color: white;
+    text-decoration: none;
+    font-size: 32px;
+    margin: 16px;
+}
+
+
+
+a, a:active, a:focus {
+    outline: none;
+}
+
+a:active {
+    text-decoration: underline;
+}
+
+
+
+.navbar>.current {
+    text-decoration: underline;
+}
+
+
+.physicsCanvas {
+    position: fixed;
+    z-index: -1;
+    pointer-events: auto;
+}
+
+.project {
+    position: relative;
+    right: 0px;
+    color: white;
+    font-size: 64px;
+    width: 210vw;
+    transition: right 1.2s ease-out;
+    border: 1px solid white;
+}
+
+.project:hover {
+    position: relative;
+    right: 100vw;
+}
+
+.project-title {
+    display: inline-block;
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    text-align: center;
+    border: 1px solid white;
+}
+
+.project-content {
+    display: inline-block;
+    margin: 0;
+    width: 100vw;
+    font-size: 24px;
+    text-align: center;
+    border: 1px solid white;
+}
