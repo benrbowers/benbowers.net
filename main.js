@@ -37,6 +37,7 @@ gitBall.velocity.y = -100 + (Math.random() * 200);
 gitBall.mass = (Math.PI * gitBall.radius ** 2);
 engine.add(gitBall);
 
+/*
 let projectsBall = new Ball(150, 'gray');
 projectsBall.position.x = Math.random() * canvas.width;
 projectsBall.position.y = Math.random() * canvas.height;
@@ -44,6 +45,7 @@ projectsBall.velocity.x = -100 + (Math.random() * 200);
 projectsBall.velocity.y = -100 + (Math.random() * 200);
 projectsBall.mass = (Math.PI * projectsBall.radius ** 2);
 engine.add(projectsBall);
+*/
 
 engine.setOnObjectPress(function () {
     if (engine.selectedObject === gitBall) {
@@ -51,14 +53,16 @@ engine.setOnObjectPress(function () {
         engine.selectedObject = null;
     }
 
+    /*
     if (engine.selectedObject === projectsBall) {
         window.location.href = './projects.html';
         engine.selectedObject = null;
     }
+    */
 });
 
 let gitOffset = gitBall.radius / Math.sqrt(2);
-let projectsOffset = projectsBall.radius / Math.sqrt(2);
+//let projectsOffset = projectsBall.radius / Math.sqrt(2);
 engine.setOnFrame(function () {
     let canvas2D = canvas.getContext('2d');
     let x = gitBall.position.x - gitOffset;
@@ -69,6 +73,7 @@ engine.setOnFrame(function () {
     
     canvas2D.drawImage(gitImg, x, y, gitOffset * 2, gitOffset * 2);
 
+    /*
     x = projectsBall.position.x - projectsOffset;
     y = projectsBall.position.y - projectsOffset;
 
@@ -76,6 +81,7 @@ engine.setOnFrame(function () {
     projectsImg.src = 'Icons/viewProjects.png';
     
     canvas2D.drawImage(projectsImg, x, y, projectsOffset * 2, projectsOffset * 2);
+    */
 
     document.body.style.cursor = 'default';
     engine.physObjects.forEach((ball) => {
