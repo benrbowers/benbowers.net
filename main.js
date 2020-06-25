@@ -86,7 +86,7 @@ engine.setOnFrame(function () {
     document.body.style.cursor = 'default';
     engine.physObjects.forEach((ball) => {
         if (ball.position.distance(engine.mousePos) < ball.radius) {
-            if (ball === gitBall || ball === projectsBall) {
+            if (ball === gitBall) {
                 document.body.style.cursor = 'pointer';
             } else {
                 document.body.style.cursor = 'grab'; 
