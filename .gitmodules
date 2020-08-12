@@ -3,4 +3,4 @@
 	url = https://github.com/benrbowers/web-physics.git
 [submodule "sticky-notes"]
 	path = sticky-notes
-	url = https://github.com/benrbowers/sticky-notes.git
+	url = https://github.com/benrbowers/sticky-notes
