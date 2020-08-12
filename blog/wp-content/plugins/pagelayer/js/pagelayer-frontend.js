@@ -481,6 +481,30 @@ function pagelayer_dismiss_alert(x){
 // Video light box handler
 function pagelayer_pl_video(jEle){
 	
+	// Adding loop, autoplay and mute properties on video before loading 
+	jEle.find('.pagelayer-video-iframe').load( function() {
+		
+		// Checking of video source if it is youtube or vimeo because 
+		// TODO: Need to check, if this is not local file then return
+		if(jQuery(this)[0].src.indexOf('youtube.com') != -1 || jQuery(this)[0].src.indexOf('vimeo.com') != -1){
+			return;
+		}
+		
+		var vidElm = jQuery(this).contents().find('video');
+		var vidSrc = vidElm.children()[0].src;	
+		
+		if(vidSrc[vidSrc.indexOf('&loop=')+6] == 1){
+			vidElm.attr('loop','loop');
+		}
+		if(vidSrc[vidSrc.indexOf('&autoplay=')+10] == 0){
+			vidElm.removeAttr('autoplay');
+			vidElm[0].pause();
+		}
+		if(vidSrc[vidSrc.indexOf('&mute=')+6] == 1){
+			vidElm[0].muted = "muted";
+		}
+	});
+	
 	// A tag will be there ONLY if the lightbox is on
 	var overlayval = jEle.find('.pagelayer-video-overlay');	
 	var a = jEle.find(".pagelayer-video-holder a");
@@ -500,7 +524,7 @@ function pagelayer_pl_video(jEle){
 
 		if (!target.parent("a").length) {
 			jQuery(this).hide();
-			jQuery(this).parent().find("#embed_video")[0].src += "?rel=0&autoplay=1";
+			jQuery(this).parent().find(".pagelayer-video-iframe")[0].src += "?rel=0&autoplay=1";
 		}
 	});
 	
@@ -508,6 +532,12 @@ function pagelayer_pl_video(jEle){
 
 // Image light box handler
 function pagelayer_pl_image(jEle){
+	
+	// Drag and Drop function for image
+	if (typeof pagelayer_preDAndD_image !== "undefined") {
+		pagelayer_preDAndD_image(jEle);
+	}
+	
 	// A tag will be there ONLY if the lightbox is on
 	var a = jEle.find("[pagelayer-image-link-type=lightbox]");
 	
@@ -556,8 +586,39 @@ function pagelayer_stars(){
 	});
 }
 
+// Grid Gallery pagination Off On function
+function pagelayer_pl_grid_paginate(gridCont, pagination, pageValue, gridValue){
+	gridCont.hide();
+	pagination.removeClass('active');
+	pagination.eq(pageValue).addClass('active');
+	gridCont.eq(gridValue).show();
+}
+
 //Grid Gallery Lightbox
 function pagelayer_pl_grid_lightbox(jEle){
+	
+	// Grid Gallery pagination settings
+	var gridCont = jEle.find('.pagelayer-grid-gallery-container').children();
+	var pagination = jEle.find('.pagelayer-grid-gallery-pagination ul').children();
+	gridCont.hide();
+	gridCont.eq(0).show();
+	// Adding event listners to pagination
+	jEle.find('.pagelayer-grid-page-item').each(function(){
+		jQuery(this).on('click', function(event){
+			var text = jQuery(this).text();
+			switch(text){
+				case '«':
+					pagelayer_pl_grid_paginate(gridCont, pagination, 1, 0);
+					break;
+				case '»':
+					pagelayer_pl_grid_paginate(gridCont, pagination, (pagination.length-2), (gridCont.length-1));
+					break;
+				default:
+					pagelayer_pl_grid_paginate(gridCont, pagination, text, text-1);
+					break;
+			}
+		});
+	});	
 
 	// A tag will be there ONLY if the lightbox is on
 	var a = jEle.find("[pagelayer-grid-gallery-type=lightbox]");
@@ -739,8 +800,13 @@ function pagelayer_recaptcha_loader(jEle, loadScript){
 		
 		if(!pagelayer_empty(window.grecaptcha)){
 			grecaptcha.ready(function() {
-				var widgetID = grecaptcha.render(jEle.get(0), {'sitekey' : jEle.data("sitekey")});
-				jEle.attr('recaptcha-widget-id', widgetID);
+				try{			
+					var widgetID = grecaptcha.render(jEle.get(0), {'sitekey' : jEle.data("sitekey")});
+					jEle.attr('recaptcha-widget-id', widgetID);
+				}catch(e){
+					console.log("There is some issue in rendering reCaptcha. Please check your recaptcha site-key !");
+				}
+				
 			});
 			clearInterval(recaptcha_interval);
 		}

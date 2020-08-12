@@ -77,12 +77,15 @@ function addBall() {
     let inputs = document.querySelectorAll('.ball-creator input');
     let ball = new Ball();
 
-    var check = new Option().style;
-    check.color = inputs[0].value;
+    let check = new Option().style;
+    let color = inputs[0].value.toLowerCase();
+    check.color = color;
 
-    if (check.color == inputs[0].value) {
+    if (color == '') {
+        alert('Please enter a color. (red, blue, #000000, etc.)');
+    } else if (check.color == color) {
 
-        ball.color = inputs[0].value;
+        ball.color = color;
         ball.radius = parseInt(inputs[1].value);
         ball.velocity.x = parseInt(inputs[2].value);
         ball.velocity.y = parseInt(inputs[3].value);

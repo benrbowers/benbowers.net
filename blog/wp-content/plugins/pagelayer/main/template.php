@@ -126,6 +126,7 @@ function pagelayer_template_include($template){
 	// If we do have Popup templates, then append it in body
 	if(!empty($pagelayer->template_popup_ids) && empty($pagelayer->template_editor)){
 		$pagelayer_enqueue_frontend = true;
+		add_action('wp_body_open', 'pagelayer_builder_popup_append');
 		add_action('wp_footer', 'pagelayer_builder_popup_append');
 	}
 	
@@ -332,6 +333,7 @@ function pagelayer_get_header($name) {
 	</head>
 
 	<body <?php body_class(); ?>>
+	<?php if(function_exists('wp_body_open')) { wp_body_open(); } ?>
 	<?php
 	
 	// Output our content

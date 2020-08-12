@@ -566,3 +566,11 @@ content: "\eab4";
 .pli-caret-right:before{
 content: "\f0da";
 }
+
+.pli-woo:before,
+.pagelayer-pl_add_to_cart:before,
+.pagelayer-pl_products:before,
+i[class*="pagelayer-pl_woo_"]:before,
+i[class*="pagelayer-pl_product_"]:before{
+content: "\e03d";
+}

@@ -2756,6 +2756,33 @@ object-fit: cover;
 display:block;
 }
 
+.pagelayer-grid-gallery-pagination{
+text-align:center;
+}
+
+.pagelayer-grid-page-ul{
+display: inline-block;
+list-style-type: none;
+margin-top:10px;
+}
+
+.pagelayer-grid-page-ul li.active {
+background-color:#00A0D2;
+color:white;
+}
+
+.pagelayer-grid-page-item{
+color: black;
+float: left;
+padding: 8px 16px;
+text-decoration: none;
+}
+
+.pagelayer-grid-page-ul li:hover:not(.active){
+background-color: #ddd;
+cursor:pointer;
+}
+
 /* Grid Gallery Style Ends */
 
 .pagelayer-heading-holder *,

@@ -46,9 +46,26 @@ function pagelayer_render_shortcode($atts, $content = '', $tag = ''){
 		$class = 'pagelayer-'.$_tag;
 	}
 	
+	$atts = (array) $atts;
+
+	// If global - > Get the post and replace $atts
+	if(!empty($atts['global_id'])){
+		
+		if(!empty($pagelayer->global_widgets[$atts['global_id']])){
+			$content = $pagelayer->global_widgets[$atts['global_id']]['$'];
+			return pagelayer_change_id($content);
+		}
+		
+		if(!empty($pagelayer->global_sections[$atts['global_id']])){
+			$content = $pagelayer->global_sections[$atts['global_id']]['$'];
+			return pagelayer_change_id($content);
+		}
+
+	}
+	
 	// Is there any function ?
 	$func = @$pagelayer->shortcodes[$tag]['func'];
-	$atts = (array) $atts;
+	
 	// Create the element array. NOTE : This is similar to the JS el and is temporary
 	$el = [];
 	$el['atts'] = $atts;
@@ -68,8 +85,9 @@ function pagelayer_render_shortcode($atts, $content = '', $tag = ''){
 	
 	$innerHTML = @$pagelayer->shortcodes[$tag]['innerHTML'];
 	if(!empty($innerHTML) && !empty($content)){
-		$el['oAtts'][$innerHTML] = $content;
-		$el['atts'][$innerHTML] = $content;
+		$_content = htmlentities($content, ENT_HTML5);
+		$el['oAtts'][$innerHTML] = $_content;
+		$el['atts'][$innerHTML] = $_content;
 	}
 	
 	// The default class
@@ -232,7 +250,13 @@ function pagelayer_render_shortcode($atts, $content = '', $tag = ''){
 						$el['attr'][] = [trim($k) => $v];
 					}
 					
-				}
+				}				
+				
+				$modes = [
+					'desktop' => '', 
+					'tablet' => '_tablet', 
+					'mobile' => '_mobile'
+				];
 				
 				// Handle the CSS
 				if(!empty($param['css'])){
@@ -241,12 +265,6 @@ function pagelayer_render_shortcode($atts, $content = '', $tag = ''){
 					if(!is_array($param['css'])){
 						$param['css'] = array($param['css']);
 					}
-					
-					$modes = [
-						'desktop' => '', 
-						'tablet' => '_tablet', 
-						'mobile' => '_mobile'
-					];
 					
 					// Loop the modes and check for values
 					foreach($modes as $mk => $mv){
@@ -289,15 +307,26 @@ function pagelayer_render_shortcode($atts, $content = '', $tag = ''){
 					
 				}
 				
-				if($param['type'] == 'typography'){
-					$val = explode(',', $el['atts'][$prop]);
+				// Loop the modes and check for values
+				foreach($modes as $mk => $mv){
 					
-					if(!empty($val[0]) && !in_array($val[0], $pagelayer->runtime_fonts)){
-						$pagelayer->runtime_fonts[] = $val[0];
-						//pagelayer_print($pagelayer->runtime_fonts);
+					$M_prop = $prop.$mv;
+					if($param['type'] == 'typography' && !empty($el['atts'][$M_prop])){
+						$val = explode(',', $el['atts'][$M_prop]);
+						
+						if(!empty($val[0]) && !in_array($val[0], $pagelayer->runtime_fonts)){
+							$pagelayer->runtime_fonts[] = $val[0];
+							//pagelayer_print($pagelayer->runtime_fonts);
+						}
+					}
+					
+					if($param['type'] == 'font_family' && !empty($el['atts'][$M_prop])){
+						$val = $el['atts'][$M_prop];
+						if(!empty($val) && !in_array($val, $pagelayer->runtime_fonts)){
+							$pagelayer->runtime_fonts[] = $val;
+						}
 					}
 				}
-				
 			}
 			
 		}
@@ -517,6 +546,23 @@ function pagelayer_render_shortcode($atts, $content = '', $tag = ''){
 	
 }
 
+// Change pagelayer id in html
+function pagelayer_change_id($content){
+
+	if(pagelayer_is_live()){
+	
+		preg_match_all('/pagelayer-id="(.*?)"/', $content, $matches);
+		$matches = array_unique($matches[1]);
+	
+		foreach($matches as $val){
+			$id = pagelayer_RandomString(16);
+			$content = str_replace($val, $id, $content);
+		}
+	}
+	
+	return $content;
+}
+
 // Creates the shortcode and returns a base64 encoded files
 function pagelayer_create_sc(&$el){
 	
@@ -525,6 +571,7 @@ function pagelayer_create_sc(&$el){
 	if(!empty($el['oAtts'])){
 		
 		foreach($el['oAtts'] as $k => $v){
+			$v = str_replace('&', '&amp;', $v);
 			$el['attr'][] = 'pagelayer-a-'.$k.'="'.$v.'"';
 		}
 		
@@ -534,6 +581,7 @@ function pagelayer_create_sc(&$el){
 	if(!empty($el['tmp'])){
 		
 		foreach($el['tmp'] as $k => $v){
+			$v = str_replace('&', '&amp;', $v);
 			$el['attr'][] = 'pagelayer-tmp-'.$k.'="'.$v.'"';
 		}
 		
@@ -723,6 +771,22 @@ function pagelayer_bg_video(&$el){
 	$youtubeRegExp = '/youtube\.com|youtu\.be/is';
 	$vimeoRegExp = '/vimeo\.com/is';
 	
+	if(!empty($el['atts']['mute'])){
+		$iframe_src .= "?&mute=1";
+		$el['atts']['mute'] = " muted ";
+	}else{
+		$iframe_src .= "?&mute=0";
+		$el['atts']['mute'] = "";
+	}
+
+	if(empty($el['atts']['stop_loop'])){
+		$iframe_src .= "&loop=1";	
+		$el['atts']['stop_loop'] = " loop ";
+	}else{
+		$iframe_src .= "&loop=0";	
+		$el['atts']['stop_loop'] = "";
+	}
+	
 	if (!empty($source)) {
 		
 		if (preg_match($youtubeRegExp, $source)) {
@@ -751,17 +815,17 @@ function pagelayer_bg_video(&$el){
 
 			}
 			
-			$el['atts']['vid_src'] = '<iframe src="'.$iframe_src.'?autoplay=1&controls=0&showinfo=0&rel=0&loop=1&autohide=1&playlist='.$videoId.'" allowfullscreen="1" webkitallowfullscreen="1" mozallowfullscreen="1" frameborder="0"></iframe>';
+			$el['atts']['vid_src'] = '<iframe src="'.$iframe_src.'autoplay=1&controls=0&showinfo=0&rel=0&autohide=1&playlist='.$videoId.'" allowfullscreen="1" webkitallowfullscreen="1" mozallowfullscreen="1" frameborder="0"></iframe>';
 			
 		} else if (preg_match($vimeoRegExp, $source)) {
 			
-			$el['atts']['vid_src'] = '<iframe src="'.$iframe_src.'?background=1&autoplay=1&loop=1&byline=0&title=0" allowfullscreen="1" webkitallowfullscreen="1" mozallowfullscreen="1" frameborder="0"></iframe>';
+			$el['atts']['vid_src'] = '<iframe src="'.$iframe_src.'background=1&autoplay=1&byline=0&title=0" allowfullscreen="1" webkitallowfullscreen="1" mozallowfullscreen="1" frameborder="0"></iframe>';
 			
 		}else{
 			
-			$el['atts']['vid_src'] = '<video autoplay loop>'.
-					'<source src="'.$iframe_src.'" type="video/mp4">'.
-				'</video>';
+			$el['atts']['vid_src'] = '<video autoplay '.$el['atts']['mute'].$el['atts']['stop_loop'].'>'.
+				'<source src="'.$iframe_src.'" type="video/mp4">'.
+			'</video>';
 			
 		}
 	}
@@ -769,6 +833,7 @@ function pagelayer_bg_video(&$el){
 
 // Image Handler
 function pagelayer_sc_social(&$el){
+	if(empty($el['atts']['icon'])) return;
 	$icon = explode(' fa-', $el['atts']['icon']);
 	$el['classes'][] = ['.pagelayer-icon-holder' => 'pagelayer-'.$icon[1]];
 }
@@ -806,6 +871,10 @@ function pagelayer_sc_image(&$el){
 
 // Image Slider Handler
 function pagelayer_sc_image_slider(&$el){
+	
+	if(empty($el['atts']['ids'])){
+		$el['atts']['ids'] = '';
+	}
 	
 	$ids = explode(',', $el['atts']['ids']);
 	$urls = [];
@@ -876,14 +945,20 @@ function pagelayer_sc_image_slider(&$el){
 //Grid Gallery Handler
 function pagelayer_sc_grid_gallery(&$el){
 	
+	if(empty($el['atts']['ids'])){
+		$el['atts']['ids'] = '';
+	}
+	
 	$ids = explode(',', $el['atts']['ids']);
 	$urls = [];
 	$all_urls = [];
 	$final_urls = [];
 	$ul = [];
+	$pagin = '<li class="pagelayer-grid-page-item active">1</li>';
 	$size = $el['atts']['size'];
 	$i = 0;
-	$col = $el['atts']['columns'];
+	$j = 1;
+	$img_Page = $el['atts']['images_no'];
 	$gallery_rand = 'gallery-id-'.floor((rand() * 100) + 1);
 	
 	$ul[] = '<ul class="pagelayer-grid-gallery-ul">';
@@ -906,9 +981,11 @@ function pagelayer_sc_grid_gallery(&$el){
 			}
 		}
 		
-		/* if(($i % $col) == 0 && $i != 0 ){
+		if($img_Page != 0 && ($i % $img_Page) == 0 && $i != 0 ){
 			$ul[] = '</ul><ul class="pagelayer-grid-gallery-ul">';
-		} */
+			$j++;
+			$pagin .= '<li class="pagelayer-grid-page-item">'.$j.'</li>';
+		}
 		
 		$li = '<li class="pagelayer-gallery-item" >';
 		
@@ -954,6 +1031,7 @@ function pagelayer_sc_grid_gallery(&$el){
 	
 	$ul[] = '</ul>';
 	
+	$pagiComplete[] = '<div class="pagelayer-grid-gallery-pagination"><ul class="pagelayer-grid-page-ul">'.'<li class="pagelayer-grid-page-item">&laquo;</li>'.$pagin.'<li class="pagelayer-grid-page-item">&raquo;</li>'.'</ul></div>';
 	//pagelayer_print($urls);
 	//pagelayer_print($final_urls);
 	//pagelayer_print($all_urls);
@@ -966,6 +1044,7 @@ function pagelayer_sc_grid_gallery(&$el){
 		$el['tmp']['ids-all-titles'] = json_encode($titles);
 		$el['tmp']['ids-all-captions'] = json_encode($captions);
 		$el['atts']['ul'] = implode('', $ul);
+		$el['atts']['pagin'] = ($j>1) ? implode('', $pagiComplete) : '';	
 		$el['tmp']['gallery-random-id'] = $gallery_rand;
 	
 	}
@@ -974,8 +1053,8 @@ function pagelayer_sc_grid_gallery(&$el){
 // Testimonial Handler
 function pagelayer_sc_testimonial(&$el){
 	
-	$el['atts']['func_image'] = @$el['tmp']['avatar-'.$el['atts']['custom_size'].'-url'];
-	$el['atts']['func_image'] = empty($el['atts']['func_image']) ? @$el['tmp']['avatar-url'] : $el['atts']['func_image'];
+	$custom_size = empty($el['atts']['custom_size']) ? '' : @$el['tmp']['avatar-'.$el['atts']['custom_size'].'-url'];
+	$el['atts']['func_image'] = empty($custom_size) ? @$el['tmp']['avatar-url'] : $custom_size;
 	
 	if(!empty($image)){
 		foreach($image as $k => $v){
@@ -988,25 +1067,29 @@ function pagelayer_sc_testimonial(&$el){
 // Video Handler
 function pagelayer_sc_video(&$el){
 	
+	$el['atts']['custom_size'] = empty($el['atts']['custom_size']) ? '' : $el['atts']['custom_size'];
+	$el['tmp']['video_overlay_image-url'] = empty($el['tmp']['video_overlay_image-url']) ? '' : $el['tmp']['video_overlay_image-url'];
+	$el['atts']['video_overlay_image'] = empty($el['atts']['video_overlay_image']) ? '' : $el['atts']['video_overlay_image'];
+	
 	$el['atts']['video_overlay_image-url'] = empty($el['tmp']['video_overlay_image-'.$el['atts']['custom_size'].'-url']) ? $el['tmp']['video_overlay_image-url'] : $el['tmp']['video_overlay_image-'.$el['atts']['custom_size'].'-url'];
 	$el['atts']['video_overlay_image-url'] = empty($el['atts']['video_overlay_image-url']) ? $el['atts']['video_overlay_image'] : $el['atts']['video_overlay_image-url'];
 	
 	// Get the video URL for the iframe
 	$el['atts']['vid_src'] = pagelayer_video_url($el['tmp']['src-url']);
 	
-	if($el['atts']['autoplay'] == "true"){
+	if(!empty($el['atts']['autoplay'])){
 		$el['atts']['vid_src'] .="?&autoplay=1";
 	}else{
 		$el['atts']['vid_src'] .="?&autoplay=0";
 	}
 
-	if($el['atts']['mute'] == "true"){
+	if(!empty($el['atts']['mute'])){
 		$el['atts']['vid_src'] .="&mute=1";
 	}else{
 		$el['atts']['vid_src'] .="&mute=0";
 	}
 
-	if($el['atts']['loop'] == "true"){
+	if(!empty($el['atts']['loop'])){
 		$el['atts']['vid_src'] .="&loop=1";	
 	}else{
 		$el['atts']['vid_src'] .="&loop=0";

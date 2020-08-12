@@ -89,7 +89,23 @@ function pagelayer_bg_video(el){
 	var src = el.tmp['bg_video_src-url'];
 	
 	var iframe_src = pagelayer_video_url(el.tmp['bg_video_src-url']);
-	
+  // Adding mute and loop option in row or col	
+	if(el.atts['mute'] == "true"){
+		iframe_src +="?&mute=1";
+		el.atts['mute'] = " muted ";
+	}else{
+		iframe_src +="?&mute=0";
+		el.atts['mute'] = "";
+	}
+
+	if(el.atts['stop_loop'] != "true"){
+		iframe_src +="&loop=1";	
+		el.atts['stop_loop'] = " loop ";
+	}else{
+		iframe_src +="&loop=0";	
+		el.atts['stop_loop'] ="";
+	}
+  
 	if (youtubeRegExp.exec(src)) {
 		
 		var youtubeRegExp1 = /youtube\.com/;
@@ -111,15 +127,15 @@ function pagelayer_bg_video(el){
 			videoId = src.split('.be/');
 		}
 		//console.log(frame_height);
-		el.atts['vid_src'] = '<iframe src="'+iframe_src+'?autoplay=1&controls=0&showinfo=0&rel=0&loop=1&autohide=1&playlist='+videoId[1]+'" allowfullscreen="1" webkitallowfullscreen="1" mozallowfullscreen="1" frameborder="0"></iframe>';
+		el.atts['vid_src'] = '<iframe src="'+iframe_src+'autoplay=1&controls=0&showinfo=0&rel=0&autohide=1&playlist='+videoId[1]+'" allowfullscreen="1" webkitallowfullscreen="1" mozallowfullscreen="1" frameborder="0"></iframe>';
 		
 	} else if (vimeoRegExp.exec(src)) {
 		
-		el.atts['vid_src'] = '<iframe src="'+iframe_src+'?background=1&autoplay=1&loop=1&byline=0&title=0" allowfullscreen="1" webkitallowfullscreen="1" mozallowfullscreen="1" frameborder="0"></iframe>';
+		el.atts['vid_src'] = '<iframe src="'+iframe_src+'background=1&autoplay=1&byline=0&title=0" allowfullscreen="1" webkitallowfullscreen="1" mozallowfullscreen="1" frameborder="0"></iframe>';
 		
 	}else{
 		
-		el.atts['vid_src'] = '<video autoplay loop>'+
+		el.atts['vid_src'] = '<video autoplay '+el.atts['mute']+el.atts['stop_loop']+'>'+
 				'<source src="'+iframe_src+'" type="video/mp4">'+
 			'</video>';
 			
@@ -259,6 +275,38 @@ function pagelayer_render_end_pl_image(el){
 	pagelayer_pl_image(el.$);
 }
 
+// Pre DragAndDrop function 
+function pagelayer_preDAndD_image(jEle){
+
+	// Making page image clickable to open media library
+	jEle.css('cursor', 'pointer');
+	
+	dropzoneParent = jEle.find('.pagelayer-img').parent();
+	
+	// Check if drop zone is already there then return
+	if(dropzoneParent.find('.pagelayer-image-drop-zone').length > 0){
+		return;
+	}
+	
+	var dropDiv = '<div class="pagelayer-image-drop-zone">'+
+					'<div>'+
+						'<i class="fa fa-upload"></i>'+
+						'<h4>'+pagelayer_l('drop_file')+'</h4>'+
+						'<div class="pagelayer-img-up-progress">'+
+							'<div class="pagelayer-img-up-bar"></div>'+
+						'</div>'+
+					'</div>'+
+				   '</div>';
+				   
+	dropzoneParent.prepend(dropDiv);		
+	
+	dropZone = dropzoneParent.find('.pagelayer-image-drop-zone');
+	
+	// Inserting values in image drag and drop function
+	pagelayer_img_dragAndDrop(dropzoneParent, dropZone, jEle, '');	
+	
+}
+
 // Render for video
 function pagelayer_render_pl_video(el){
 	el.atts['video_overlay_image-url'] = el.tmp['video_overlay_image-'+el.atts['custom_size']+'-url'] || el.tmp['video_overlay_image-url'];
@@ -313,6 +361,13 @@ function pagelayer_render_pl_service(el){
 	el.atts['func_image'] = el.tmp['service_image-'+el.atts['service_image_size']+'-url'] || el.tmp['service_image-url'];
 	el.atts['func_image'] = el.atts['func_image'] || el.atts['service_image'];
 	
+}
+
+function pagelayer_render_end_pl_service(el){
+	// Drag and Drop function for image
+	if (typeof pagelayer_preDAndD_image !== "undefined") { 
+    	pagelayer_preDAndD_image(el.$);
+	}
 }
 
 function pagelayer_social(jEle,sel){
@@ -423,7 +478,6 @@ function pagelayer_render_end_pl_image_slider(el){
 
 // Render the grid gallery
 function pagelayer_render_pl_grid_gallery(el){
-	
 	// The URLs
 	var img_urls = !pagelayer_empty(el.tmp['ids-urls']) ? JSON.parse(el.tmp['ids-urls']) : [];
 	var all_urls = !pagelayer_empty(el.tmp['ids-all-urls']) ? JSON.parse(el.tmp['ids-all-urls']) : [];
@@ -433,25 +487,30 @@ function pagelayer_render_pl_grid_gallery(el){
 	//console.log(img_urls);
 		
 	var ul = '';
+	var	pagin = '<li class="pagelayer-grid-page-item active">1</li>';
 	var is_link = 'link_to' in el.atts && !pagelayer_empty(el.atts['link_to']) ? true : false;
-	var col = el.atts['columns'];
 	
 	var i = 0;
+	var j = 1;
 	if(pagelayer_empty(el.tmp)){
 		ul = '<h4 style="text-align:center;">'+ pagelayer_l('select_images')+'</h4>';
 		el.atts['ul'] = ul;
+		el.atts['pagin'] = '';
 		return;
 	}
   
 	ul += '<ul class="pagelayer-grid-gallery-ul">';
 	var gallery_rand = 'gallery-id-'+Math.floor((Math.random() * 100) + 1);
+	var imgInPage = el.atts['images_no'];
 	
 	// Create figure HTML
 	for (var x in img_urls){
 		
-		/* if(i % col == 0 && i != 0){
+		if(imgInPage != 0 && (i % imgInPage) == 0 && i != 0){
 			ul += '</ul><ul class="pagelayer-grid-gallery-ul">';
-		} */
+			j++;
+			pagin += '<li class="pagelayer-grid-page-item">'+j+'</li>';			
+		}
 		
 		// Use the default URL first
 		var url = img_urls[x];
@@ -469,7 +528,7 @@ function pagelayer_render_pl_grid_gallery(el){
 		}
 		
 		if(is_link && el.atts['link_to'] == 'media_file'){
-			var link = (el.atts['link_to'] == 'media_file' ? url : (el.atts['link'] || ''))
+			var link = (el.atts['link_to'] == 'media_file' ? url : (el.atts['link'] || ''));
 			ul += '<a href="'+link+'" class="pagelayer-ele-link">';
 		}
 		
@@ -479,7 +538,7 @@ function pagelayer_render_pl_grid_gallery(el){
 		}
 		
 		if(is_link && el.atts['link_to'] == 'lightbox'){			
-			ul += '<a href="'+img_urls[x]+'" class="pagelayer-ele-link" data-lightbox-gallery="'+gallery_rand+'" alt="'+img_title[x]+'" pagelayer-grid-gallery-type="'+el.atts['link_to']+'">'
+			ul += '<a href="'+img_urls[x]+'" class="pagelayer-ele-link" data-lightbox-gallery="'+gallery_rand+'" alt="'+img_title[x]+'" pagelayer-grid-gallery-type="'+el.atts['link_to']+'">';
 		}
 		
 		ul += '<img class="pagelayer-img" src="'+url+'" title="'+img_title[x]+'" alt="'+img_title[x]+'">';
@@ -501,11 +560,19 @@ function pagelayer_render_pl_grid_gallery(el){
 	}
 	ul += '</ul>';
 	
+	el.atts['pagin'] = (j > 1) ? '<div class="pagelayer-grid-gallery-pagination"><ul class="pagelayer-grid-page-ul">'+'<li class="pagelayer-grid-page-item">&laquo;</li>'+
+						pagin+
+						'<li class="pagelayer-grid-page-item">&raquo;</li>'+'</ul></div>' : '';
+	
 	el.tmp['gallery-random-id'] = gallery_rand;
 	
 	el.atts['ul'] = ul;
 
-};
+}
+
+function pagelayer_render_end_pl_grid_gallery(el){
+	pagelayer_pl_grid_lightbox(el.$);
+}
 
 // Render for tabs
 function pagelayer_render_html_pl_tabs(el){

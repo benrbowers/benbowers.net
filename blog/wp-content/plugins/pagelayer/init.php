@@ -5,7 +5,7 @@ if (!defined('ABSPATH')) exit;
 
 define('PAGELAYER_BASE', plugin_basename(PAGELAYER_FILE));
 define('PAGELAYER_PRO_BASE', 'pagelayer-pro/pagelayer-pro.php');
-define('PAGELAYER_VERSION', '1.1.4');
+define('PAGELAYER_VERSION', '1.1.8');
 define('PAGELAYER_DIR', dirname(PAGELAYER_FILE));
 define('PAGELAYER_SLUG', 'pagelayer');
 define('PAGELAYER_URL', plugins_url('', PAGELAYER_FILE));
@@ -17,8 +17,6 @@ define('PAGELAYER_DOCS', 'https://pagelayer.com/docs/');
 define('PAGELAYER_API', 'https://api.pagelayer.com/');
 define('PAGELAYER_SC_PREFIX', 'pl');
 define('PAGELAYER_YOUTUBE_BG', 'https://www.youtube.com/watch?v=Csa6rvCWmLU');
-@define('PAGELAYER_BRAND_TEXT', 'Pagelayer');
-@define('PAGELAYER_LOGO', PAGELAYER_URL.'/images/pagelayer-logo-40.png');
 
 include_once(PAGELAYER_DIR.'/main/functions.php');
 include_once(PAGELAYER_DIR.'/main/class.php');
@@ -87,6 +85,14 @@ function pagelayer_load_plugin(){
 
 	// Set the array
 	$pagelayer = new PageLayer();
+	
+	if(empty($pagelayer->BRAND_TEXT)){
+		$pagelayer->BRAND_TEXT = 'Pagelayer';
+	}
+	
+	if(empty($pagelayer->LOGO)){
+		$pagelayer->LOGO = PAGELAYER_URL.'/images/pagelayer-logo-40.png';
+	}
 	
 	// Load license
 	pagelayer_load_license();
@@ -310,7 +316,7 @@ function pagelayer_enqueue_frontend($force = false){
 	}
 
 	// Enqueue the FRONTEND CSS
-	if(get_post_meta($post->ID , 'pagelayer-data') || $is_pagelayer || $force){
+	if((!empty($post->ID) && get_post_meta($post->ID , 'pagelayer-data')) || $is_pagelayer || $force){
 
 		// We dont need the auto <p> and <br> as they interfere with us
 		remove_filter('the_content', 'wpautop');

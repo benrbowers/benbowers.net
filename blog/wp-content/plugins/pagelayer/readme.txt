@@ -4,7 +4,7 @@ Tags: page builder, editor, landing page, drag-and-drop, pagelayer, form-builder
 Requires at least: 4.7
 Tested up to: 5.4
 Requires PHP: 5.5
-Stable tag: 1.1.4
+Stable tag: 1.1.8
 License: LGPL v2.1
 License URI: http://www.gnu.org/licenses/lgpl-2.1.html
 
@@ -108,6 +108,35 @@ Do you have questions related to PageLayer ? Use the following links :
 6. **Sections** Pagelayer has a nice grid systems with rows and columns. You can create sections so much easily with Pagelayer
 
 == Changelog ==
+
+= 1.1.8 (July 02, 2020) =
+* [Security-Fix] Our internal security audit revealed XSS vulnerabilities. This is fixed. Please upgrade to this version ASAP !
+* [Bug-fix] When an image was clicked, the image gallery was opened to choose the image. This was a bug introduced in the last version and is fixed now.
+* [Bug-fix] In certain cases, the rich text content was not rendered properly. This is fixed.
+* [Bug-fix] On turning on the error report in PHP, some PHP error notice was shown. This is fixed.
+
+= 1.1.7 (June 26, 2020) =
+* [Feature] Now you can open the media library by clicking the images and choosing or uploading the same.
+* [Tasks] Added Mute and Looping options in background video in rows and columns.
+* [Bug-fix] On turning on the error report in PHP, some PHP error notice was shown. This is fixed.
+
+= 1.1.6 (June 22, 2020) =
+* [Bug-Fix] In certain cases some js error occurred while dragging and dropping the widget. This is fixed.
+
+= 1.1.5 (June 19, 2020) =
+* [Premium-Feature] Added the option to save widgets and sections as a Global Widget / Section. Now the user can save the widgets and sections and use them on the entire site.
+* [Feature] Image dropzone has been added to the image property, now user can add images via drag and drop.
+* [Feature] Added "Make link" option for the phone and email widget.
+* [Feature] We have added font styling options in the Options tab of the element.
+* [Feature] Added tabs in the Pagelayer Templates List to filter templates by their type.
+* [Feature] Added pagination option for the Grid gallery.
+* [Task] Import theme content has been further improved. Now users can select advanced option before importing the theme.
+* [Task] Added "snapchat-ghost" icon to the Share widget icons list.
+* [Task] Added pointer height option in the Primary menu widget to manage height of pointers and also added the dropdown alignment option.
+* [Bug-Fix] In certain cases, the video autoplay, loop and mute options was not working properly in the video widget. This is fixed.
+* [Bug-Fix] In some cases, the Pagelayer Editor was unable to load while setting motion effects. This is fixed.
+* [Bug-Fix] In certain cases, when a revision of the post/page was applied, after updating the post, the post/page was invisible from the "All Pages" page. This is fixed.
+* [Bug-Fix] In some cases, YouTube videos were not being loaded properly in the lightbox. This is fixed.
 
 = 1.1.4 (May 27, 2020) =
 * [Premium-Feature] Added options to add site-key, secret-key and language for reCaptcha in settings.

@@ -136,6 +136,9 @@ pagelayer_social_urls =  '.json_encode(pagelayer_get_social_urls()).';
 pagelayer_shortcodes.pl_post_props.params.post_title.default = "'.pagelayer_escapeHTML($post->post_title).'";
 pagelayer_shortcodes.pl_post_props.params.post_name.default = "'.pagelayer_escapeHTML($post->post_name).'";
 pagelayer_shortcodes.pl_post_props.params.post_status.default = "'.$_post->post_status.'";
+pagelayer_global_widgets = '.json_encode($pagelayer->global_widgets).';
+pagelayer_saved_sections = '.json_encode($pagelayer->saved_sections).';
+pagelayer_global_sections = '.json_encode($pagelayer->global_sections).';
 </script>';
 
 		

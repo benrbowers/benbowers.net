@@ -62,6 +62,15 @@ class PageLayer{
 	
 	// For exporting templates
 	var $media_to_export = array();
+	
+	// For global widget
+	var $global_widgets = array();
+	
+	// For global section
+	var $global_sections = array();
+	
+	// For saved sections
+	var $saved_sections = array();
 
 	function __construct() {
 

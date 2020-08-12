@@ -176,7 +176,8 @@ border-radius: 2px;
 box-shadow: 0 0 5px rgba(0,0,0,0.1);
 z-index: 10;
 border: 1px solid rgba(0,0,0,0.2);
-width:135px;
+min-width:135px;
+/*max-width:170px;*/
 }
 
 .pagelayer-right-click-options ul{
@@ -191,6 +192,7 @@ padding: 8px 10px;
 width: 100%;
 display: block;
 transition: all 0.2s;
+white-space:nowrap;
 }
 
 .pagelayer-right-click-options a .fa{
@@ -379,3 +381,66 @@ font-weight: 700;
 letter-spacing: 0.046875em;
 }
 /* WordPress media box CSS end */
+
+
+/* image drop zone css start */
+.pagelayer-image-drop-zone{
+position:absolute;
+text-align:center;
+width:100%;
+height:100%;
+z-index:3;
+background-color: #2ea5dff0;
+display:none;
+}
+
+.pagelayer-image-drop-zone *{
+pointer-events:none;
+}
+
+.pagelayer-image-drop-zone > div{
+position: relative;
+top: 50%;
+-webkit-transform: translateY(-50%);
+-ms-transform: translateY(-50%);
+transform: translateY(-50%);
+}
+
+.pagelayer-image-drop-zone div *{
+color:white;
+}
+
+.pagelayer-image-drop-zone div i{
+font-size:50px;
+}
+
+.pagelayer-img-up-progress {
+width: 30%;
+margin-left: auto;
+margin-right: auto;
+background-color: transparent;
+border: 2px solid white;
+border-radius: 30px;
+padding: 3px;
+}
+
+.pagelayer-img-up-bar {
+width: 3%;
+height: 7px;
+background-color: white;
+line-height: 7px;
+text-align: center;
+border-radius: 30px;
+}
+/* image drop zone css start */
+
+.pagelayer-pro-req{
+font-size: 10px;
+padding: 2px 4px;
+display: inline-block;
+background-color: #e63131;
+color: #fff;
+margin-left: 4px;
+border-radius: 2px;
+cursor: pointer;
+}

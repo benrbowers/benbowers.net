@@ -13,6 +13,7 @@ pagelayer = {
 	copy_selected: '',
 	mouse: {x: -1, y: -1},
 	history_action : true,
+	global_render : true,
 	history_lastTime : new Date(),
 	props_ref : {},
 	pro_txt : '',
@@ -20,6 +21,28 @@ pagelayer = {
 
 var pagelayer_history_obj = {}, pagelayer_revision_obj = {};
 var pagelayer_add_section_data = {};
+
+
+/*window.onerror = function (msg, url, lineNo, columnNo, error) {
+  var string = msg.toLowerCase();
+  var substring = "script error";
+  if (string.indexOf(substring) > -1){
+    alert("Script Error: See browser console for details");
+  } else {
+    var message = [
+      "Message: " + msg,
+      "URL: " + url,
+      "Line: " + lineNo,
+      "Column: "+ columnNo,
+      "Error object: " + JSON.stringify(error)
+    ].join('\n');
+
+    console.log(message);
+    alert("Script Error: See browser console for details");
+  }
+
+  return false;
+};*/
 
 // Lets start
 jQuery(document).ready(function(){
@@ -99,7 +122,7 @@ jQuery(document).ready(function(){
 });
 
 // Executes when pagelayer is fully loaded
-function pagelayer_loader_hide() {
+function pagelayer_loader_hide(){
 	var inner = pagelayer.$$('.pagelayer-percent');
 	inner.attr('loaded', 1);
 	var w = parseInt(inner.text());
@@ -648,8 +671,15 @@ function pagelayer_setup_drag(){
 			
 			var wrap = pagelayer.dragging;
 			var tag = pagelayer_tag(wrap);
+			var gId = wrap.attr('pagelayer-global-id');
 			var fromEl = wrap.parent();
 			var id;
+			
+			// Global ID is there for sure ?
+			if(pagelayer_empty(gId) || pagelayer_empty(pagelayer_global_widgets[gId])){
+				gId = 0;
+			}
+			
 			wrap.removeClass('pagelayer-is-dragging');
 			
 			// Find any prospect
@@ -668,8 +698,13 @@ function pagelayer_setup_drag(){
 				var before_loc; // Location before the drop
 				
 				// Create the element if it needs to be created
-				if(pagelayer.drag_is_new){					
+				if(pagelayer.drag_is_new){
 					dropped = jQuery('<div pagelayer-tag="'+tag+'"></div>');
+					
+					// Is there a global ID
+					if(!pagelayer_empty(gId)){
+						dropped.attr('pagelayer-global-id', gId);
+					}
 				
 				// Move the object
 				}else{
@@ -702,7 +737,7 @@ function pagelayer_setup_drag(){
 					id = pagelayer_onadd(dropped);
 					
 					// Create Column
-					if(tag == 'pl_row' || tag == 'pl_inner_row'){
+					if((tag == 'pl_row' || tag == 'pl_inner_row') && pagelayer_empty( dropped.attr('pagelayer-global-id') )){
 						var col = jQuery('<div pagelayer-tag="pl_col"></div>');
 						jQuery('[pagelayer-id="'+id+'"]').find('.pagelayer-row-holder').append(col);
 						var col_id = pagelayer_onadd(col, false);
@@ -776,6 +811,7 @@ function pagelayer_setup_drag(){
 		
 		var tEle = jQuery(e.target);
 		var jEle = tEle.closest('.pagelayer-shortcode-drag');
+		var global_id = jEle.attr('pagelayer-global-id');
 		
 		// Is it an existing element ?
 		if(jEle.length < 1){
@@ -783,6 +819,10 @@ function pagelayer_setup_drag(){
 		}
 		
 		e.originalEvent.dataTransfer.setData('tag', pagelayer_tag(jEle));
+		
+		if(!pagelayer_empty(global_id)){
+			e.originalEvent.dataTransfer.setData( 'global_id', global_id );
+		}
 		
 		pagelayer.dragging = jEle;
 		pagelayer.drag_is_new = true;
@@ -1006,12 +1046,24 @@ function pagelayer_element_added(jEle){
 	
 	var sc = jEle.attr('pagelayer-tag');
 	var id, par_id;
+	var gId = jEle.attr('pagelayer-global-id');
+	gId = gId && !pagelayer_empty(pagelayer_global_widgets[gId]) ? gId : 0;
 	
 	// Set Pagelayer History FALSE to prevent saving attributes in action history
 	pagelayer.history_action = false;
-
+	pagelayer.global_render = false;
+	
+	// Is this a global widget ?
+	if(!pagelayer_empty(gId)){
+	
+		html = pagelayer_element_unsetup(pagelayer_global_widgets[gId].$);
+		html.attr('pagelayer-a-global_id', gId);
+	
 	// Generate the HTML
-	html = pagelayer_create_sc(sc);
+	}else{
+		html = pagelayer_create_sc(sc);
+	}
+	
 	id = pagelayer_assign_id(html);
 	par_id = id;
 	
@@ -1029,15 +1081,19 @@ function pagelayer_element_added(jEle){
 		
 		// Do we have to create children ?
 		if('has_group' in props){
-					
-			var has_group = props['has_group'];		
-			var gProp = props[has_group['section']][has_group['prop']];
 			
-			for(var i=0; i < gProp['count']; i++){
-				var cid = pagelayer_element_add_child(jQuery("[pagelayer-id="+id+"]"), gProp['sc']);
-				//pagelayer_element_setup('[pagelayer-id='+cid+']', true);
+			// Is this not a global widget ?
+			if(pagelayer_empty(gId)){
+				var has_group = props['has_group'];
+				var gProp = props[has_group['section']][has_group['prop']];
+				
+				for(var i=0; i < gProp['count']; i++){
+					var cid = pagelayer_element_add_child(jQuery("[pagelayer-id="+id+"]"), gProp['sc']);
+					//pagelayer_element_setup('[pagelayer-id='+cid+']', true);
+				}
+			}else{
+				pagelayer_sc_render(jQuery('[pagelayer-id="'+par_id+'"]'));
 			}
-			
 		}
 	
 	}
@@ -1055,6 +1111,7 @@ function pagelayer_element_added(jEle){
 	
 	// Set pagelayer history TRUE
 	pagelayer.history_action = true;
+	pagelayer.global_render = true;
 	
 	return id;
 	
@@ -1343,6 +1400,35 @@ function pagelayer_element_setup(selector, render){
 	});
 }
 
+// Unsetup element for restup
+function pagelayer_element_unsetup(selector, id){
+	
+	id = id || pagelayer_randstr(16);
+	
+	var src = jQuery(selector);
+	var html = src[0].outerHTML;
+	
+	var jEle = jQuery(html);
+	jEle.removeAttr('pagelayer-id');
+	jEle.find('[pagelayer-id]').removeAttr('pagelayer-id');
+	jEle.find('[pagelayer-parent]').removeAttr('pagelayer-parent');// Remove the parent attribute as it will be reset during pagelayer_element_setup
+	jEle.find('style').remove();
+	jEle.find('.pagelayer-ele-overlay').remove();
+	
+	// Unwrap the wraps
+	jEle.find('.pagelayer-ele').each(function (){
+		var ele = jQuery(this);
+		if(ele.parent().is('.pagelayer-ele-wrap')){
+			ele.unwrap();
+		}
+	});
+	
+	// Assign id
+	jEle.attr('pagelayer-id', id);
+	
+	return jEle;
+}
+
 // Left Click
 function pagelayer_left_click(){
 	
@@ -1378,6 +1464,9 @@ function pagelayer_right_click(){
 			'<li><a class="pagelayer-right-copy"><i class="fa fa-files-o" /> '+pagelayer_l('Copy')+'</a></li>'+
 			'<li><a class="pagelayer-right-paste"><i class="fa fa-clipboard" /> '+pagelayer_l('Paste')+'</a></li>'+
 			'<li><a class="pagelayer-right-delete"><i class="fa fa-trash-o" /> '+pagelayer_l('Delete')+'</a></li>'+
+			'<li><a class="pagelayer-right-save-global-widget" pro="1"><i class="fa fa-floppy-o" /> '+pagelayer_l('save_global')+'</a></li>'+
+			'<li><a class="pagelayer-right-save-section" pro="1"><i class="fa fa-heart" /> '+pagelayer_l('save_as_section')+'</a></li>'+
+			'<li><a class="pagelayer-right-save-global-section" pro="1"><i class="fa fa-globe" /> '+pagelayer_l('save_as_global_section')+'</a></li>'+
 		'</ul>'+
 	'</div>';
 	
@@ -1408,6 +1497,26 @@ function pagelayer_right_click(){
 		$contextMenu.find('.pagelayer-right-paste').attr('onclick', 'pagelayer_paste_element("[pagelayer-id='+id+']")');
 		$contextMenu.find('.pagelayer-right-delete').attr('onclick', 'pagelayer_delete_element("[pagelayer-id='+id+']")');
 		
+		// If is pagelayer pro
+		if(!pagelayer_empty(pagelayer_pro)){
+			$contextMenu.find('.pagelayer-right-save-global-widget').attr('onclick', 'pagelayer_save_sections("[pagelayer-id='+id+']", "global_widget")');
+			$contextMenu.find('.pagelayer-right-save-section').attr('onclick', 'pagelayer_save_sections("[pagelayer-id='+id+']", "section")');
+			$contextMenu.find('.pagelayer-right-save-global-section').attr('onclick', 'pagelayer_save_sections("[pagelayer-id='+id+']", "global_section")');
+		}else{
+			var pro = $contextMenu.find('[pro="1"]');
+			
+			if(pro.find('.pagelayer-pro-req').length < 1){
+				pro.append('<span class="pagelayer-pro-req">Pro</span>');
+			}
+			
+			pro.css({'color': '#a7a7a7'});
+			
+			// To stopPropagation
+			pro.parent().on('click', function(e){
+				e.stopPropagation();
+			});
+		}
+		
 		// If copy_selected is empty then copy data from localStorage
 		if(pagelayer_empty(pagelayer.copy_selected)){
 			pagelayer_copy_from_localStorage();
@@ -1419,6 +1528,31 @@ function pagelayer_right_click(){
 			$contextMenu.find('.pagelayer-right-paste').parent().show();
 		}else{
 			$contextMenu.find('.pagelayer-right-paste').parent().hide();
+		}
+		
+		var gId = jEle.attr("pagelayer-a-global_id");
+		
+		// Are we to hide the global widget ?
+		if(!pagelayer_empty(gId) || tag == 'pl_row' || tag == 'pl_inner_row'|| tag == 'pl_col'){
+			$contextMenu.find('.pagelayer-right-save-global-widget').parent().hide();
+		}else{
+			$contextMenu.find('.pagelayer-right-save-global-widget').parent().show();
+		}
+		
+		var sId = jEle.attr("pagelayer-a-global-section-id");
+		
+		// Are we to hide the save as global section ?
+		if( tag == 'pl_row' &&  pagelayer_empty(sId)){
+			$contextMenu.find('.pagelayer-right-save-global-section').parent().show();
+		}else{
+			$contextMenu.find('.pagelayer-right-save-global-section').parent().hide();
+		}
+		
+		// Are we to hide the save as section ?
+		if( tag == 'pl_row' ){
+			$contextMenu.find('.pagelayer-right-save-section').parent().show();
+		}else{
+			$contextMenu.find('.pagelayer-right-save-section').parent().hide();
 		}
 		
 		$contextMenu.css({
@@ -1590,6 +1724,12 @@ jQuery(document).on('paste', function(pasteEvent){
 			
 			// For our widgets
 			}else{
+				
+				if(pagelayer_empty(pagelayer_active.el) || pagelayer_empty(pagelayer_active.el.id)){
+					console.log("Active element not found while pasting image !");
+					return;
+				}
+				
 				var fTo = pagelayer_can_copy_to('[pagelayer-id="'+pagelayer_active.el.id+'"]');
 				// We need to empty pagelayer.copy_selected
 				pagelayer.copy_selected = '';
@@ -1771,25 +1911,11 @@ function pagelayer_copy_from_localStorage(){
 // Note : insertAfter should always be an pagelayer-ele
 function pagelayer_copy_element(selector, insertAfter){
 	var src = jQuery(selector);
-	var html = src[0].outerHTML;
 	var tag = pagelayer_tag(src);
 	insertAfter = insertAfter || src;
 	insertAfter = insertAfter.parent();
 	
-	var jEle = jQuery(html);
-	jEle.removeAttr('pagelayer-id');
-	jEle.find('[pagelayer-id]').removeAttr('pagelayer-id');
-	jEle.find('[pagelayer-parent]').removeAttr('pagelayer-parent');// Remove the parent attribute as it will be reset during pagelayer_element_setup
-	jEle.find('style').remove();
-	jEle.find('.pagelayer-ele-overlay').remove();
-	
-	// Unwrap the wraps
-	jEle.find('.pagelayer-ele').each(function (){
-		var ele = jQuery(this);
-		if(ele.parent().is('.pagelayer-ele-wrap')){
-			ele.unwrap();
-		}
-	});
+	var jEle = pagelayer_element_unsetup(src);
 	
 	// Give it an ID
 	var id = pagelayer_assign_id(jEle);
@@ -1820,6 +1946,204 @@ function pagelayer_copy_element(selector, insertAfter){
 	
 	return id;
 };
+
+// Save sections as template
+function pagelayer_ajax_save_template(data, ajax_call_back = ''){
+
+	if(pagelayer_empty(data)){
+		return;
+	}
+	
+	//save global sections and widgets
+	jQuery.ajax({
+		type: "POST",
+		url: pagelayer_ajax_url+'&action=pagelayer_save_templ_content&postID='+pagelayer_postID,
+		data: { 
+			pagelayer_nonce: pagelayer_ajax_nonce,
+			global_widgets : data
+		},
+		success: function(response, status, xhr){
+			//alert(data);
+			var obj = jQuery.parseJSON(response);
+			if(!pagelayer_empty(ajax_call_back) || typeof ajax_call_back == 'function'){
+				ajax_call_back(obj);
+			}
+		},
+		error: function(errorThrown){
+			console.log(errorThrown);
+		}
+	});
+	
+}
+
+// Save widgets as a global widget
+function pagelayer_save_sections(sel, section = 'section'){
+	
+	var jEle = jQuery(sel);
+	
+	var  pagelayer_ajax_func = {};
+	var label = 'Please enter the title';
+	var content = pagelayer_generate_sc(jEle, true);
+	var data = {};// create array for template data
+	data[0] = {};
+	
+	switch(section){
+		
+		case 'global_widget' :
+			var title = prompt(label, 'Global Widget');
+			if (title == null) return;
+			
+			// Save the widget data in global widget array 
+			if(pagelayer_empty(pagelayer_global_widgets)){
+				pagelayer_global_widgets = {};
+			}
+			
+			break;
+			
+		case'global_section' :
+			var title = prompt(label, 'Global Section');
+			if (title == null) return;
+			
+			break;
+			
+		case 'section':
+			var title = prompt(label, 'Section');
+			if (title == null) return;
+			
+			break;
+			
+	}
+	
+	// Add Data
+	data[0]['title'] = title;
+	data[0]['post_type'] = 'pagelayer-template';
+	data[0]['type'] = section; 
+	data[0]['content'] = content.replace(/pagelayer-id="(.*?)"/g, ""); // Need to remove pagelayer id,
+	
+	// This function for ajax success call back of global widget 
+	pagelayer_ajax_func['global_widget'] = function(obj){
+		
+		if(pagelayer_empty(obj['success'])){
+			return;
+		}
+		
+		for(var post_id in obj['success']){
+			
+			jEle.attr("pagelayer-a-global_id", post_id );
+			
+			// Add global
+			jData = {};
+			jData['post_id'] = post_id;
+			jData['title'] = title; // TODO : create modal to input title
+			jData['$'] = jEle;
+			jData['tag'] = pagelayer_tag(jEle);
+			jData['is_dirty'] = true;
+			
+			// Add the array in global widgets array
+			pagelayer_global_widgets[post_id] = jData;
+			
+			pagelayer.$$('.pagelayer-elpd-close').click();
+			pagelayer.$$('.pagelayer-widget-tab').click();
+			break;
+		}
+		
+	}
+	
+	// This function for ajax success call back of global sections
+	pagelayer_ajax_func['global_section'] = function(obj){
+		// TODO: For global Sections
+		//console.log(obj);
+	}
+	
+	// This function for ajax success call back of section s
+	pagelayer_ajax_func['section'] = function(obj){
+		//console.log(obj);
+	}
+	
+	pagelayer_ajax_save_template(data, pagelayer_ajax_func[section]);
+	
+}
+
+// Genrate sc for global widgets
+function pagelayer_generate_sc_global_widget(){
+	
+	var global_widgets = {};
+
+	// Create shortcode for all the global widgets
+	for(var y in pagelayer_global_widgets){
+		var cWidget = pagelayer_global_widgets[y];
+		
+		// If is_dirty empty then continue the loop
+		if(pagelayer_empty(cWidget['is_dirty'])){
+			continue;
+		}
+		
+		global_widgets[y] = {};
+		global_widgets[y]['title'] = cWidget['title'];
+		global_widgets[y]['post_id'] = pagelayer_empty(cWidget['post_id']) ? 0 : cWidget['post_id'];
+		global_widgets[y]['post_type'] = 'pagelayer-template';
+		global_widgets[y]['type'] = 'global_widget';
+		
+		var content = pagelayer_generate_sc(jQuery(cWidget.$), true);
+		
+		// IF is group then need to remove pagelayer id, 
+		if(pagelayer_is_group(cWidget['tag'])){
+			content = content.replace(/pagelayer-id="(.*?)"/g, "");
+		}
+		
+		global_widgets[y]['content'] = content;
+		pagelayer_global_widgets[y]['is_dirty'] = false;
+	}
+	
+	return global_widgets;
+}
+
+var pagelayer_set_global_timmer = {};
+
+// If you edit one Global widget it shoud be copied to other instances of the same global widget
+function pagelayer_setup_global_widgets(id, jEle){
+	
+	if(pagelayer_empty(id) || pagelayer_empty(pagelayer_global_widgets[id])){
+		return;
+	}
+	
+	var elData = pagelayer_global_widgets[id];
+	
+	clearTimeout(pagelayer_set_global_timmer);
+	pagelayer_set_global_timmer = setTimeout(function(){
+		// Set attrs for all the global widgets  
+		jQuery(pagelayer_editable+' [pagelayer-a-global_id='+ id +']').each(function(){
+			
+			var cEle = jQuery(this);
+			var cEleID = pagelayer_id(cEle);
+	
+			if( jEle.length > 0 && jEle.is(cEle)){
+				return true;
+			}
+			
+			pagelayer.history_action = false;
+			pagelayer.global_render = false;
+			
+			// Get HTML form global array
+			var html = pagelayer_element_unsetup(elData.$, cEleID);
+									
+			if(cEle.parent().is('.pagelayer-ele-wrap')){
+				cEle.parent().children('.pagelayer-ele-overlay').remove();
+				cEle.unwrap();
+			}
+			
+			cEle[0].outerHTML = html[0].outerHTML;
+			
+			pagelayer_element_setup('[pagelayer-id='+cEleID+'], [pagelayer-id='+cEleID+'] .pagelayer-ele');
+			pagelayer_sc_render(jQuery('[pagelayer-id="'+cEleID+'"]'));
+			
+			pagelayer.history_action = true;
+			pagelayer.global_render = true;
+		});
+		
+	}, 3000);
+
+}
 
 // Language key
 function pagelayer_l(k){
@@ -2079,7 +2403,7 @@ function pagelayer_set_atts(jEle, atts, val){
 		//console.log(x+'-'+atts[x]);
 		
 		// Is this a pro feature and we are not pro ? Then we dont do anything and continue !
-		if('pro' in _props[x] && pagelayer_empty(pagelayer_pro)){
+		if(!pagelayer_empty(_props[x]) && 'pro' in _props[x] && pagelayer_empty(pagelayer_pro)){
 			continue;
 		}
 		
@@ -2116,20 +2440,7 @@ function pagelayer_set_atts(jEle, atts, val){
 			}
 			
 			// Remove the tmp atts anyway
-			var to_del = new Array();
-			var regexp = new RegExp('pagelayer\-tmp\-'+x, 'gi');
-			
-			jQuery.each(jEle[0].attributes, function(index, att){
-				if(!att) return;
-				if(att.name.match(regexp)){
-					to_del.push(att.name);
-				}
-			});
-			
-			//console.log(to_del);
-			for(var n in to_del){
-				jEle.removeAttr(to_del[n]);
-			}
+			pagelayer_clear_tmp_atts(jEle, x);
 		
 		// Set the value
 		}else{
@@ -2190,6 +2501,25 @@ function pagelayer_set_tmp_atts(jEle, atts, val){
 	}
 	
 };
+
+// This function removes the temporary attributes of an ele
+function pagelayer_clear_tmp_atts(jEle, attr){	
+			
+	var to_del = new Array();
+	var regexp = new RegExp('pagelayer\-tmp\-'+attr, 'gi');
+	
+	jQuery.each(jEle[0].attributes, function(index, att){
+		if(!att) return;
+		if(att.name.match(regexp)){
+			to_del.push(att.name);
+		}
+	});
+	
+	//console.log(to_del);
+	for(var n in to_del){
+		jEle.removeAttr(to_del[n]);
+	}
+}
 
 // Set the att and classes of an HTML which is not yet created
 function pagelayer_sc_atts(classes, atts){
@@ -2700,12 +3030,29 @@ function pagelayer_sc_render(jEle){
 	
 	// If the element have any parent
 	var par = pagelayer_get_parent(jEle);
+	var eleId = el.id;
+
 	if(par){
+		eleId = par;
 		pagelayer_sc_render(pagelayer_ele_by_id(par));
 	}
 	
   // Render End trigger
 	pagelayer_trigger_action('pagelayer_sc_render_end', [el]);
+		
+	var gEle = pagelayer_ele_by_id(eleId);
+	var gId = gEle.attr('pagelayer-a-global_id');
+	
+	// If global id exist then update the global array and restup the all global element
+	if(!pagelayer_empty(gId) && !pagelayer_empty(pagelayer.global_render)){
+		if(!pagelayer_empty(pagelayer_global_widgets[gId])){
+			pagelayer_global_widgets[gId].$ = gEle;
+			pagelayer_global_widgets[gId]['is_dirty'] = true;
+			pagelayer_setup_global_widgets(gId, pagelayer_ele_by_id(eleId), true);
+		}else{
+			gEle.removeAttr('pagelayer-a-global_id');
+		}
+	};
 	
 };
 
@@ -2784,6 +3131,13 @@ function pagelayer_save(){
 	// Do we have contact templates ?
 	var contacts_props = pagelayer_get_contact_templates();
 	
+	// Do we have any global widget to save ?
+	var global_data  = {};
+	
+	if(!pagelayer_empty(pagelayer_global_widgets)){
+		global_data = pagelayer_generate_sc_global_widget();
+	}
+	
 	jQuery.ajax({
 		type: "POST",
 		url: pagelayerajaxurl,
@@ -2791,6 +3145,7 @@ function pagelayer_save(){
 			pagelayer_update_content : post,
 			pagelayer_nonce: pagelayer_ajax_nonce,
 			page_props: props,
+			global_widgets: global_data,
 			contacts: contacts_props
 		},
 		success: function(response, status, xhr){
@@ -2830,13 +3185,12 @@ function pagelayer_close(){
 };
 
 // Generate Shortcode Post to save
-function pagelayer_generate_sc(selector){
+function pagelayer_generate_sc(selector, selfEle){
 	
+	selfEle = selfEle || false;
 	var txt = '';
 	
-	jQuery(selector).children(".pagelayer-ele-wrap").each(function(){
-		
-		var jEle = jQuery(this).children('.pagelayer-ele');
+	var generate_sc_single = function(jEle){
 		
 		// The ID
 		var id = jEle.attr('pagelayer-id');
@@ -2849,7 +3203,7 @@ function pagelayer_generate_sc(selector){
 		// Find the type of tag
 		var tag = jEle.attr('pagelayer-tag');
 		var final_tag = tag;
-		var closestEle = jQuery(this).closest('.pagelayer-col-holder');
+		var closestEle = jEle.closest('.pagelayer-col-holder');
 		
 		// Define inner row | Note : Commented as we now have a new widget of type inner_row
 		/*if(tag == 'pl_row' && closestEle.length > 0 && closestEle.closest(pagelayer_editable).length > 0){
@@ -2950,7 +3304,24 @@ function pagelayer_generate_sc(selector){
 		// Close the tag
 		txt = txt+"[/"+final_tag+"]\n";
 		
-	});
+	};
+	
+	// Are you an element for which to generate the codes ?
+	if(jQuery(selector).hasClass('pagelayer-ele') && selfEle){
+  
+		generate_sc_single(jQuery(selector));
+  
+	// The selector is the holder, so loop thru
+	}else{
+	
+		jQuery(selector).children(".pagelayer-ele-wrap").each(function(){
+			
+			var jEle = jQuery(this).children('.pagelayer-ele');
+			generate_sc_single(jEle);
+			
+		});
+	
+	}
 	
 	return txt;
 	
@@ -3035,9 +3406,14 @@ function pagelayer_leftbar(){
 	var html = '<div class="pagelayer-leftbar">'+
 	'<div class="pagelayer-leftbar-scroll">'+
 		'<div id="pagelayer-shortcodes" class="pagelayer-leftbar-tab pagelayer-shortcodes">'+
-			'<div class="pagelayer-leftbar-search">'+
-				'<i class="pli pli-search" /><input class="pagelayer-search-field" /><span class="pagelayer-sf-empty pli">&times;</span>'+
-			'</div>';
+			'<div class="pagelayer-widget-tabs">'+
+				'<div class="pagelayer-widget-tab" pagelayer-widget-tab="widgets" pagelayer-elpd-active-tab=1>Widgets</div>'+
+				'<div class="pagelayer-widget-tab" pagelayer-widget-tab="global">Global</div>'+
+			'</div>'+
+			'<div class="pagelayer-shortcodes-widget">'+
+				'<div class="pagelayer-leftbar-search">'+
+					'<i class="pli pli-search" /><input class="pagelayer-search-field" /><span class="pagelayer-sf-empty pli">&times;</span>'+
+				'</div>';
 		
 	for(var x in pagelayer_groups){
 		
@@ -3075,6 +3451,8 @@ function pagelayer_leftbar(){
 	}
 	
 	html += '</div>'+
+		'<div id="pagelayer-global-widget" class="pagelayer-hidden pagelayer-global-widget"></div>'+
+		'</div>'+
 		'<div id="pagelayer-elpd" class="pagelayer-leftbar-tab pagelayer-elpd"></div>'+
 		'<div id="pagelayer-options" class="pagelayer-leftbar-tab pagelayer-options"></div>'+
 		'<div id="pagelayer-history" class="pagelayer-leftbar-tab pagelayer-history"></div>'+
@@ -3135,6 +3513,81 @@ function pagelayer_leftbar(){
 		
 		var pl_tag = jQuery(this).attr('pagelayer-tag') || 'pl_post_props';
 		pagelayer_post_settings(pl_tag);
+	});
+	
+	// On click Pagelayer setting icon
+	var global_widget_list = function(){
+		
+		var gHtml = '';
+		
+		if(pagelayer_empty(pagelayer_pro)){
+			gHtml += '<div class="pagelayer-global-widget-pro">'+pagelayer.pro_txt+
+			'<p>Using this feature, you can save the widgets globally and use them on the entire site. The global widget will be editable from one place.</p>'+
+			'</div>';
+			
+			pagelayer.$$('#pagelayer-global-widget').html(gHtml);
+			return;
+		}
+		
+		gHtml += '<div class="pagelayer-global-widget-shortcodes">'+
+			'<div class="pagelayer-leftbar-search">'+
+				'<i class="pli pli-search" /><input class="pagelayer-search-field" /><i class="pagelayer-sf-empty pli">&times;</i>'+
+			'</div>'+
+			'<div class="pagelayer-leftbar-group"><h5>'+pagelayer_l('global_widgets')+'</h5></div>'+
+		'</div>';
+		
+		if(pagelayer_empty(pagelayer_global_widgets)){
+			pagelayer_global_widgets = [];
+			gHtml += '<div class="pagelayer-leftbar-group"><h5>No global widgets found</h5></div>';
+		}
+
+		// Indivdual icon
+		for(var y in pagelayer_global_widgets){
+			
+			var sc = pagelayer_global_widgets[y]['tag'];
+			
+			if(!(sc in pagelayer_shortcodes) || 'not_visible' in pagelayer_shortcodes[sc]){
+				continue;
+			}
+			
+			gHtml += '<div class="pagelayer-shortcode-drag" draggable="true" pagelayer-tag="'+sc+'" pagelayer-global-id="'+y+'">'+
+				'<div class="pagelayer-sc">'+
+					'<center class="pagelayer-shortcode-inner">';
+					
+					if('icon' in pagelayer_shortcodes[sc]){
+						gHtml += '<i class="pagelayer-shortcode '+pagelayer_shortcodes[sc]['icon']+'"></i>';
+					}else{
+						gHtml += '<i class="pagelayer-shortcode pli pagelayer-'+sc+'"></i>';
+					}
+					
+					gHtml += '</center>'+
+					'<span class="pagelayer-shortcode-text">'+pagelayer_global_widgets[y]['title']+'</span>'+
+				'</div>'+
+			'</div>';
+			
+		}
+	
+		pagelayer.$$('#pagelayer-global-widget').html(gHtml);
+	};
+	
+	// The widget tabs
+	pagelayer.$$('.pagelayer-widget-tab').on('click', function(){	
+		var attr = 'pagelayer-elpd-active-tab';
+		pagelayer.$$('.pagelayer-widget-tab').each(function(){
+			jQuery(this).removeAttr(attr);
+		});
+		var cEle = jQuery(this);
+		cEle.attr(attr, 1);
+		
+		if(cEle.attr('pagelayer-widget-tab') == 'global'){
+			cEle.closest('#pagelayer-shortcodes').find('.pagelayer-shortcodes-widget').addClass('pagelayer-hidden');
+			cEle.closest('#pagelayer-shortcodes').find('.pagelayer-global-widget').removeClass('pagelayer-hidden');
+			// Trigger create global widgets
+			global_widget_list();
+		}else{
+			cEle.closest('#pagelayer-shortcodes').find('.pagelayer-shortcodes-widget').removeClass('pagelayer-hidden');
+			cEle.closest('#pagelayer-shortcodes').find('.pagelayer-global-widget').addClass('pagelayer-hidden');
+		}
 	});
 	
 	// On click search empty
@@ -3383,7 +3836,34 @@ function pagelayer_history_setup(force){
 				if(obj['error']){
 					alert(obj['error']);
 				}else{
+					
+					// Get the current post_name and post_status
+					var props = jQuery(pagelayer_editable).find('.pagelayer-post_props');
+					var post_name = '', post_status = '';
+					
+					if(props.length > 0){
+						post_name = pagelayer_get_att(props, 'post_name');
+						post_status = pagelayer_get_att(props, 'post_status');
+					}
+					
 					jQuery(pagelayer_editable).html(obj['content']);
+					
+					// Add previous post_name and post_status
+					var props_new = jQuery(pagelayer_editable).find('.pagelayer-post_props');
+					if(props_new.length > 0){
+						
+						if(pagelayer_empty(post_name)){
+							post_name = pagelayer_shortcodes.pl_post_props.params.post_name.default;
+						}
+						
+						if(pagelayer_empty(post_status)){
+							post_status = pagelayer_shortcodes.pl_post_props.params.post_status.default;
+						}
+						
+						props_new.attr('pagelayer-a-post_name', post_name);
+						props_new.attr('pagelayer-a-post_status', post_status);
+					}
+					
 					alert(obj['success']);
 					pagelayer_element_setup();
 					pagelayer_add_widget();
@@ -4080,16 +4560,26 @@ function pagelayer_add_widget(){
 	var add_area = jQuery('.pagelayer-add-widget-area');
 	
 	// Add a code before this
-	var add_sc = function(tag){
+	var add_sc = function(tag, global_id = ''){
+		
+		var attr = '';
+		if(!pagelayer_empty(global_id)){
+			attr = ' pagelayer-global-id="'+global_id+'" ';
+		}
 		
 		// Create Row		
-		var row = jQuery('<div pagelayer-tag="pl_row"></div>');
+		var row = jQuery('<div pagelayer-tag="pl_row" '+((tag == 'pl_row') ? attr : '') +'></div>');
 		add_area.before(row);
 		var row_id = pagelayer_onadd(row, false);
 		var rEle = pagelayer_ele_by_id(row_id);
 		
+		if(tag == 'pl_row' && !pagelayer_empty(global_id)){
+			rEle.click();
+			return row_id;
+		}
+		
 		// Create Column
-		var col = jQuery('<div pagelayer-tag="pl_col"></div>');
+		var col = jQuery('<div pagelayer-tag="pl_col" '+((tag == 'pl_col') ? attr : '') +'></div>');
 		rEle.find('.pagelayer-row-holder').append(col);
 		var col_id = pagelayer_onadd(col, false);
 		var cEle = pagelayer_ele_by_id(col_id);
@@ -4106,7 +4596,7 @@ function pagelayer_add_widget(){
 		}
 		
 		// Create element
-		var ele = jQuery('<div pagelayer-tag="'+tag+'"></div>');
+		var ele = jQuery('<div pagelayer-tag="'+tag+'" '+attr+'></div>');
 		cEle.find('.pagelayer-col-holder').append(ele);
 		var id = pagelayer_onadd(ele);
 		var eEle = pagelayer_ele_by_id(col_id);
@@ -4114,7 +4604,7 @@ function pagelayer_add_widget(){
 		// Ensure the column is not empty
 		pagelayer_empty_col(cEle.find('.pagelayer-col-holder'));
 		
-		if(tag == 'pl_inner_row'){
+		if(tag == 'pl_inner_row' && pagelayer_empty(global_id)){
 			// Create Column
 			var in_col = jQuery('<div pagelayer-tag="pl_col"></div>');
 			eEle.find('.pagelayer-row-holder').append(in_col);
@@ -4158,6 +4648,7 @@ function pagelayer_add_widget(){
 		jQuery('.pagelayer-is-dragging').removeClass('pagelayer-is-dragging');
 		
 		var tag = e.originalEvent.dataTransfer.getData('tag');
+		var global_id = e.originalEvent.dataTransfer.getData('global_id');
 		
 		// Is it an existing element ?
 		if(tag.length < 1){
@@ -4168,7 +4659,7 @@ function pagelayer_add_widget(){
 		
 		//console.log(tag);
 		
-		add_sc(tag);
+		add_sc(tag, global_id);
 	});
 };
 
@@ -4253,7 +4744,7 @@ function pagelayer_add_section_area(){
 		mEle.find('.pagelayer-section-search').val('');
 	});
 	
-	// On click close modal 
+	// On select section type 
 	mEle.find('#pagelayer-section-type').on('change', function(){
 		var val = jQuery(this).val();
 		pagelayer_add_sections_list_setup(val);
@@ -4604,7 +5095,14 @@ function pagelayer_upload_image(fileName, blob, pagelayer_ajax_func){
 			if(typeof pagelayer_ajax_func.beforeSend == 'function'){
 				pagelayer_ajax_func.beforeSend(xhr);						
 			}
-		},
+		},		
+		xhr: function() {
+			var xhr = new window.XMLHttpRequest();
+			if(typeof pagelayer_ajax_func.uploadProgress == 'function'){
+				xhr = pagelayer_ajax_func.uploadProgress(xhr);						
+			}
+		  return xhr;
+		},		
 		error:function(err){
 			//console.error(err);
 			alert("Unable to upload image for some reason.");
@@ -4625,11 +5123,17 @@ function pagelayer_upload_image(fileName, blob, pagelayer_ajax_func){
 
 // On editable area image paste handler
 function pagelayer_editable_paste_handler(pasteEvent, pagelayer_ajax_func){
+	var items,
+	is_Paste = (pasteEvent.type == 'paste' ? true : false),
+	mustPreventDefault = false,
+	reader;
 
 	try {
-		var items = (pasteEvent.originalEvent || pasteEvent).clipboardData.items,
-		mustPreventDefault = false,
-		reader;
+		if(is_Paste){
+			items = (pasteEvent.originalEvent || pasteEvent).clipboardData.items;			
+		}else{
+			items = [pasteEvent];
+		}
 		
 		for (var i = items.length - 1; i >= 0; i -= 1) {
 
@@ -4646,7 +5150,11 @@ function pagelayer_editable_paste_handler(pasteEvent, pagelayer_ajax_func){
 						var block = src.split(";");
 						var contentType = block[0].split(":")[1];
 						var realData = block[1].split(",")[1];
-						var fileName = "image."+contentType.split("/")[1];
+						if(is_Paste){
+							var fileName = "image."+contentType.split("/")[1];					
+						}else{
+							var fileName = items[0]['name'];
+						}
 						
 						// Convert it to a blob to upload
 						var blob = pagelayer_b64toBlob(realData, contentType);
@@ -4657,17 +5165,23 @@ function pagelayer_editable_paste_handler(pasteEvent, pagelayer_ajax_func){
 				   
 				};
 				/* jshint +W083 */
-				reader.readAsDataURL(items[i].getAsFile());
+				if(is_Paste){
+					reader.readAsDataURL(items[i].getAsFile());	
+				}else{
+					reader.readAsDataURL(items[i]);					
+				}
 				mustPreventDefault = true;
 			}
 		}
 		
-		if(mustPreventDefault){
+		if(mustPreventDefault && is_Paste){
 			pasteEvent.stopPropagation();
 			pasteEvent.preventDefault();
 		}
 		
-	}catch(err){}
+	}catch(err){
+		console.log(err);
+	}
 	
 	return mustPreventDefault;
 	

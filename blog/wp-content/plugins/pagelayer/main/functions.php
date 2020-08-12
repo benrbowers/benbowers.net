@@ -528,6 +528,7 @@ function pagelayer_memory_limit($mb){
 
 // Loads the shortcodes
 function pagelayer_load_shortcodes(){
+	global $pagelayer;
 	
 	pagelayer_memory_limit(128);
 
@@ -549,7 +550,51 @@ function pagelayer_load_shortcodes(){
 	
 	// Apply filter to load custom widgets
 	do_action('pagelayer_load_custom_widgets');
+	if(defined('PAGELAYER_PREMIUM')){
+		// Add global widget data
+		// Get global widget templates id by type	
+		$args = [
+			'post_type' => $pagelayer->builder['name'],
+			'status' => 'publish',
+			'meta_key' => 'pagelayer_template_type',
+			'meta_value' => array('global_widget', 'section',  'global_section'),
+			'posts_per_page' => -1
+		];
+		
+		$query = new WP_Query($args);
+		
+		$tmp_list = [];
+		$global_widgets = array();
+		$global_widgets['global_widget'] = array();
+		$global_widgets['section'] = array();
+		$global_widgets['global_section'] = array();
+		
+		foreach($query->posts as $template){
+			
+			// The type
+			$pagelayer_template_type = get_post_meta($template->ID, 'pagelayer_template_type', true);
+							
+			$global_data = [];
+			$global_data['post_id'] = $template->ID;
+			$global_data['title'] = $template->post_title;
+			
+			$tag = '';
+			
+			// Get content
+			if (preg_match_all( '/' . get_shortcode_regex() . '/s', $template->post_content, $matches, PREG_SET_ORDER ) ) {
+				$tag = $matches[0][2]; 				
+			}
+			
+			$global_data['tag'] = $tag;
+			$global_data['$'] = do_shortcode($template->post_content);			
+			$global_widgets[$pagelayer_template_type][$template->ID] = $global_data;
 
+		}
+		
+		$pagelayer->global_widgets = $global_widgets['global_widget'];
+		$pagelayer->saved_sections = $global_widgets['section'];
+		$pagelayer->global_sections = $global_widgets['global_section'];
+	}
 }
 
 // Add the shortcodes to the pagelayer list
@@ -584,6 +629,7 @@ function pagelayer_add_shortcode($tag, $params = array()){
 		'ele_bg_styles' => __pl('ele_bg_styles'),
 		'ele_styles' => __pl('ele_styles'),
 		'border_styles' => __pl('border_styles'),
+		'font_style' => __pl('font_style'),
 		'position_styles' => __pl('position_styles'),
 		'animation_styles' => __pl('animation_styles'),
 		'motion_effects' => __pl('Motion Effects'),
@@ -681,11 +727,6 @@ function pagelayer_image($id){
 			$caption = wp_get_attachment_caption($id);
 			$caption = !empty($caption) ? $caption : '';
 
-			$ret['alt'] = $alt;
-			$ret['title'] = $title;
-			$ret['link'] = $link;
-			$ret['caption'] = $caption;
-
 		}
 
 	}
@@ -699,6 +740,11 @@ function pagelayer_image($id){
 	if(empty($ret['url'])){
 		$ret['url'] = PAGELAYER_URL.'/images/default-image.png';
 	}
+
+	$ret['alt'] = @$alt;
+	$ret['title'] = @$title;
+	$ret['link'] = @$link;
+	$ret['caption'] = @$caption;
 	
 	$ret = apply_filters('pagelayer_image', $ret);
 
@@ -867,6 +913,45 @@ function pagelayer_unescapeHTML($str){
 		$str = str_replace('&'.$k.';', $v, $str);
 	}
 	return $str;
+}
+
+// Check for XSS codes in our shortcodes submitted
+function pagelayer_xss_content($data){
+	$data = pagelayer_unescapeHTML($data);
+	$data = preg_split('/\s/', $data);
+	$data = implode('', $data);
+	//echo $data;
+	
+	if(preg_match('/["\']javascript\:/is', $data)){
+		return 'javascript';
+	}
+	
+	if(preg_match('/["\']vbscript\:/is', $data)){
+		return 'vbscript';
+	}
+	
+	if(preg_match('/\-moz\-binding\:/is', $data)){
+		return '-moz-binding';
+	}
+	
+	if(preg_match('/expression\(/is', $data)){
+		return 'expression';
+	}
+	
+	if(preg_match('/\<(iframe|frame|script|style|link|applet|embed|xml|svg|object|layer|ilayer|meta)/is', $data, $matches)){
+		return $matches[1];
+	}
+	
+	$not_allowed = array('onclick', 'ondblclick', 'onmousedown', 'onmousemove', 'onmouseout', 'onmouseover', 'onmouseup', 'onload', 'onunload', 'onchange', 'onsubmit', 'onreset', 'onselect', 'onblur', 'onfocus', 'onkeydown', 'onkeypress', 'onkeyup', 'onafterprint', 'onbeforeprint', 'onbeforeunload', 'onerror', 'onhashchange', 'onmessage', 'onoffline', 'ononline', 'onpagehide', 'onpageshow', 'onpopstate', 'onresize', 'onstorage', 'oncontextmenu', 'oninput', 'oninvalid', 'onsearch', 'onkeydown', 'onmousewheel', 'onwheel', 'ondrag', 'ondragend', 'ondragenter', 'ondragleave', 'ondragover', 'ondragstart', 'ondrop', 'onscroll', 'oncopy', 'oncut', 'onpaste', 'onabort', 'oncanplay', 'oncanplaythrough', 'oncuechange', 'ondurationchange', 'onemptied', 'onended', 'onloadeddata', 'onloadedmetadata', 'onloadstart', 'onpause', 'onplay', 'onplaying', 'onprogress', 'onratechange', 'onseeked', 'onseeking', 'onstalled', 'onsuspend', 'ontimeupdate', 'onvolumechange', 'onwaiting', 'ontoggle');
+	
+	$not_allowed = implode('|', $not_allowed);
+		
+	if(preg_match('/('.($not_allowed).')=/is', $data, $matches)){
+		return $matches[1];
+	}
+	
+	return;
+
 }
 
 // Show promo notice on dashboard
@@ -1234,7 +1319,7 @@ function pagelayer_posts($params, $args = []){
 				<div class="pagelayer-wposts-featured">';
 		$data .= '<a href="'. get_the_permalink() .'">';
 		
-		if(isset($params['show_thumb']) && has_post_thumbnail( $postsquery->ID )){
+		if(!empty($params['show_thumb']) && has_post_thumbnail( $postsquery->ID )){
 			$data .= '<div class="pagelayer-wposts-thumb"'.(has_post_thumbnail() ? ' style="background:url('.get_the_post_thumbnail_url($postsquery->ID,$params['thumb_size']).')"' : '').'></div>';
 		}
 		/* if($params['show_thumb'] && has_post_thumbnail( $postsquery->ID )){
@@ -1243,22 +1328,22 @@ function pagelayer_posts($params, $args = []){
 		$data .= '</a></div>
 			<div class="pagelayer-wposts-content">';
 		
-		if(isset($params['show_title'])){
+		if(!empty($params['show_title'])){
 			$data .= '<a href="'.esc_url( get_permalink() ).'" rel="bookmark"><div class="pagelayer-wposts-title">'. get_the_title().'</div></a>';
 		}
 		
 		$data .= '<div class="pagelayer-wposts-meta">';
 		$sep = '';
-		if(isset($params['meta_sep'])){
+		if(!empty($params['meta_sep'])){
 			$sep = '<b class="pagelayer-wposts-sep">'.$params['meta_sep'].'</b>';
 		}
-		if(isset($params['author'])){
+		if(!empty($params['author'])){
 			$data .= '<span class="pagelayer-wposts-author">By <a class="pagelayer-wposts-author-url" href="'.esc_url(get_author_posts_url(get_the_author_meta('ID'))).'">'.esc_html(get_the_author()).'</a></span>'.$sep;
 		}
-		if(isset($params['date'])){
+		if(!empty($params['date'])){
 			$data .= '<span class="pagelayer-wposts-date"><time class="pagelayer-wposts-entry-date published updated" datetime="'.get_the_date('c').'"><span class="date-d">'.get_the_date('j').'</span><span class="date-my">'.get_the_date('M, y').'</span></time></span>'.$sep;
 		}
-		if(isset($params['category'])){
+		if(!empty($params['category'])){
 			$category = get_the_category();
 			$singlecategory = '';
 			foreach( $category as $cat ){
@@ -1266,7 +1351,7 @@ function pagelayer_posts($params, $args = []){
 			}
 			$data .= '<span class="pagelayer-wposts-category">' . $singlecategory . '</span>'.$sep;
 		}
-		if(isset($params['tags'])){
+		if(!empty($params['tags'])){
 			$tags = get_the_tags();
 			$singletag = '';
 			if(!empty($tags)){
@@ -1279,13 +1364,13 @@ function pagelayer_posts($params, $args = []){
 			}
 			
 		}
-		if(isset($params['comments'])){
+		if(!empty($params['comments'])){
 			$data .= '<span class="pagelayer-wposts-comments"><i class="far fa-comment"></i><a href="' . esc_url( get_permalink() ) . '">' . esc_html(get_comments_number()) . '</a></span>'.$sep;
 		}
 		
 		$data .= '</div>';
 		
-		if(isset($params['show_content'])){
+		if(!empty($params['show_content'])){
 			$data .= '<div class="pagelayer-wposts-excerpt">';
 			if($params['show_content'] == 'excerpt'){	
 				$data .= do_shortcode(get_the_excerpt());
@@ -1295,7 +1380,7 @@ function pagelayer_posts($params, $args = []){
 			$data .= '</div>';
 		}
 		
-		if(isset($params['show_more'])){
+		if(!empty($params['show_more'])){
 			$data .= '<div class="pagelayer-wposts-mdiv"><a class="pagelayer-wposts-more pagelayer-btn-holder pagelayer-ele-link '.$params['btn_type'].' '.$params['size'].' '.$params['icon_position'].'" href="'. get_the_permalink().'">';
 			
 			if($params['icon']){
@@ -1453,6 +1538,10 @@ function pagelayer_create_sel_options( $opt_array , $selected = ''){
 		
 		// Groups
 		}else{
+			
+			if(array_key_exists('hide_drop', $opt_array[$x]) && !empty($opt_array[$x]['hide_drop'])){
+				continue;
+			}
 			
 			// If Label is there, then its a normal option
 			if(array_key_exists('label', $opt_array[$x])){
@@ -2125,4 +2214,8 @@ function pagelayer_captcha_verify(){
 	}
 	
 	return false;
+}
+
+function pagelayer_load_font_options(){
+	include_once(PAGELAYER_DIR.'/main/font-options.php');
 }

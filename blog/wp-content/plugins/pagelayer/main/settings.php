@@ -645,6 +645,11 @@ function pagelayer_settings_page(){
 			<div class="pagelayer-tab-panel pagelayer-cf" id="contactform">
 				 <table>
 					<tr>
+						<td colspan="2" style="align:middle;">
+						<p>You can use a field name with a prefix $ to print your field value e.g. if the field name is <b>fieldname</b> then use the variable <b>$fieldname</b></p>
+						</td>
+					</tr>
+					<tr>
 						<th scope="row">To Email:</th>
 						<td>
 							<label>

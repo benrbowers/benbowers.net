@@ -45,7 +45,7 @@ a, a:active, a:focus {
     outline: none;
 }
 
-a:active {
+a:hover {
     text-decoration: underline;
 }
 
@@ -62,35 +62,17 @@ a:active {
     pointer-events: auto;
 }
 
-.project {
-    position: relative;
-    right: 0px;
-    color: white;
-    font-size: 64px;
-    width: 210vw;
-    transition: right 1.2s ease-out;
-    border: 1px solid white;
+@media (min-resolution: 200dpi) {
+    .header h1 {
+        font-size: 150px;
+    }
+    
+    .header p {
+        font-size: 80px;
+    }
+    .navbar a {
+        font-size: 64px;
+        margin: 16px;
+    }
 }
 
-.project:hover {
-    position: relative;
-    right: 100vw;
-}
-
-.project-title {
-    display: inline-block;
-    margin: 0;
-    padding: 0;
-    width: 100vw;
-    text-align: center;
-    border: 1px solid white;
-}
-
-.project-content {
-    display: inline-block;
-    margin: 0;
-    width: 100vw;
-    font-size: 24px;
-    text-align: center;
-    border: 1px solid white;
-}

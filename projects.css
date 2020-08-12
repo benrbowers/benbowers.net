@@ -1,0 +1,72 @@
+.project {
+    display: inline-block;
+    background-color: darkslategray;
+    position: relative;
+    right: 0px;
+    color: white;
+    width: 300px;
+    height: 300px;
+    border-radius: 15px;
+    margin: 20px;
+    overflow: hidden;
+}
+
+
+.project-title {
+    display: inline-block;
+    font-size: 64px;
+    width: 300px;
+    height: 300px;
+    text-align: center;
+    transition: bottom 1s;
+    margin: 0;
+    position: relative;
+    bottom: 0px;
+    transition: bottom 1s;
+}
+
+.project-content {
+    display: inline-block;
+    vertical-align: top;
+    font-size: 22px;
+    width: 280px;
+    height: 280px;
+    padding: 10px;
+    position: relative;
+    bottom: 0px;
+    transition: bottom 1s;
+}
+
+.project-content p {
+    margin-top: 0;
+}
+
+.project-content a {
+    color: white;
+}
+
+.project-content a:active {
+    color: lightgray;
+}
+
+@media (min-resolution: 200dpi) {
+    .project {
+        width: 500px;
+        height: 500px;
+        border-radius: 15px;
+        margin: 20px;
+    }
+    
+    
+    .project-title {
+        width: 500px;
+        height: 500px;
+    }
+    
+    .project-content {
+        font-size: 40px;
+        width: 480px;
+        height: 480px;
+        padding: 10px;
+    }
+}

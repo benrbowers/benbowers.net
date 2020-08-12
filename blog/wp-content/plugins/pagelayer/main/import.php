@@ -29,7 +29,7 @@ include_once(PAGELAYER_DIR.'/main/settings.php');
 function pagelayer_import(){
 	
 	global $pagelayer, $pagelayer_theme, $pagelayer_theme_url, $pagelayer_theme_path, $pagelayer_pages, $pl_error;
-	
+		
 	$pagelayer_theme = wp_get_theme();
 	$pagelayer_theme_url = get_stylesheet_directory_uri();
 	$pagelayer_theme_path = get_stylesheet_directory();
@@ -45,7 +45,7 @@ function pagelayer_import(){
 	// Have we already imported ?
 	$imported = get_option('pagelayer_theme_'.get_template().'_imported');
 	if(!empty($imported)){
-		$GLOBALS['pl_warn'] = __('You have already imported the content of this theme. You can re-import the same, but it will over-write existing pages / pagelayer templates which have the same name.', 'pagelayer');
+		$GLOBALS['pl_warn'] = __('You have already imported the content of this theme. You can re-import the same by either choosing to over-write existing pages / pagelayer templates OR creating duplicate content !', 'pagelayer');
 	}
 	
 	// Call the theme
@@ -120,9 +120,127 @@ pointer: cursor;
 background: #fff !important;
 color: #7444fd !important;
 }
+
+/* The Modal (background) */
+.pagelayer-modal {
+display: none;
+position: fixed;
+z-index: 10000;
+left: 0;
+top: 0;
+width: 100%;
+height: 100%;
+overflow: auto;
+background-color: rgb(0,0,0);
+background-color: rgba(0,0,0,0.4);
+}
+
+/* Modal Content/Box */
+.pagelayer-modal-holder {
+background-color: #fefefe;
+margin: 15% auto; /* 15% from the top and centered */
+border: 1px solid #888;
+width: 50%;
+min-height: 200px;
+position: relative;
+}
+
+/* The Close Button */
+.pagelayer-modal-close {
+color: #aaa;
+float: right;
+font-size: 28px;
+font-weight: bold;
+}
+
+.pagelayer-modal-close:hover,
+.pagelayer-modal-close:focus {
+color: black;
+text-decoration: none;
+cursor: pointer;
+}
+
+.pagelayer-modal-header{
+max-height: 80px;
+top: 0px;
+border-bottom: 1px solid #ccc;
+}
+
+.pagelayer-modal-footer{
+max-height: 80px;
+bottom: 0px;
+border-top: 1px solid #ccc;
+text-align: right;
+}
+
+.pagelayer-modal-header,
+.pagelayer-modal-content,
+.pagelayer-modal-footer{
+padding: 15px;
+width: 100%;
+box-sizing: border-box;
+}
+
+#pagelayer-import-form>div{
+padding: 4px;
+font-weight: 600;
+}
+
 </style>
 
+<!-- The Modal -->
+<div id="pagelayerModal" class="pagelayer-modal">
+
+	<!-- Modal holder -->
+	<div class="pagelayer-modal-holder">
+
+		<!-- Modal header -->
+		<div class="pagelayer-modal-header">
+			<b>Import Theme Contents</b> <span class="pagelayer-modal-close">&times;</span>
+		</div>
+		
+		<!-- Modal content -->
+		<div class="pagelayer-modal-content">		
+			<form id="pagelayer-import-form" method="post" enctype="multipart/form-data">
+				<input name="theme" value="'.get_template().'" type="hidden" />
+				<div><input type="checkbox" name="delete_old_import" id="delete_old_import" /> Delete Previously Imported Content</div>
+				<div><input type="checkbox" name="overwrite" /> Overwrite existing Pages with same name</div>
+				<div><input type="checkbox" name="set_home_page" checked /> Set the Home Page as per the content</div>
+			</form>
+		</div>
+		
+		<!-- Modal footer -->
+		<div class="pagelayer-modal-footer">
+			<button class="button button-primary" onclick="jQuery(\'#pagelayer-import-form\').submit()">Import</button> &nbsp;
+			<button class="button pagelayer-cancel">Cancel</button>
+		</div>
+	</div>
+
+</div> 
+
 <script>
+
+function pagelayer_modal(sel){
+	
+	var modal = jQuery(sel);
+	
+	modal.show();
+
+	// Get the <span> element that closes the modal
+	var span = modal.find(".pagelayer-modal-close, .pagelayer-cancel");
+
+	// When the user clicks on <span> (x), close the modal
+	span.on("click", function() {
+		modal.hide();
+	});
+
+	// When the user clicks anywhere outside of the modal, close it
+	window.onclick = function(event) {
+		if(event.target == modal[0]){
+			modal.hide();
+		}
+	}
+}
 
 jQuery(document).ready(function(){
 	var $ = jQuery;
@@ -147,8 +265,13 @@ jQuery(document).ready(function(){
 		choose_image($(this));
 	});
 	
-	$("#pagelayer_import_submit").on("click", function(){
-		if(confirm("This will overwrite any pages / pagelayer templates which have the same post name. Should we proceed ?")){
+	$("#pagelayer-import-form").on("submit", function(){
+		
+		if(!jQuery("#delete_old_import").is(":checked")){
+			return true;
+		}
+		
+		if(confirm("This will delete any pages / pagelayer templates imported earlier. Should we proceed ?")){
 			return true;
 		}else{
 			return false;
@@ -179,10 +302,7 @@ jQuery(document).ready(function(){
 </div>
 
 <div style="position:fixed; bottom: 30px; right: 30px;">
-	<form action="" method="post" enctype="multipart/form-data">
-		<input name="theme" value="'.get_template().'" type="hidden" />
-		<input id="pagelayer_import_submit" name="import_theme" class="button button-pagelayer" value="Import Theme Content" type="submit" />
-	</form>
+	<input name="import_theme" class="button button-pagelayer" value="Import Theme Content" type="button" onclick="pagelayer_modal(\'#pagelayerModal\')" />
 </div>';
 	
 }
@@ -195,6 +315,25 @@ global $pagelayer, $pagelayer_theme, $pagelayer_theme_url, $pagelayer_theme_path
 	
 	$pagelayer_theme_path = get_stylesheet_directory();
 	//die($pagelayer_theme_path);
+	
+	// Delete Old Data ?
+	if(isset($_POST['delete_old_import'])){
+		$args = array(
+			'post_type' => ['page', 'post', $pagelayer->builder['name']],
+			'meta_query' => array(
+				array(
+					'key' => 'pagelayer_imported_content',
+					'compare' => 'EXISTS'
+				)
+			)
+		);
+		$query = new WP_Query($args);
+
+		foreach ( $query->posts as $p ) {
+			//echo $p->ID.'<br>';
+			wp_delete_post($p->ID);
+		}
+	}
 	
 	/////////////////////////
 	// Handle PAGELAYER DATA
@@ -220,6 +359,9 @@ global $pagelayer, $pagelayer_theme, $pagelayer_theme_url, $pagelayer_theme_path
 		}
 		
 	}
+	
+	// Create the menu
+	$menu_id = pagelayer_create_header_menu();
 	
 	// Check the theme files
 	foreach($pgl as $k => $v){
@@ -254,9 +396,11 @@ global $pagelayer, $pagelayer_theme, $pagelayer_theme_url, $pagelayer_theme_path
 		$new_post['comment_status'] = 'closed';
 		$new_post['ping_status'] = 'closed';		
 		//r_print($new_post);die();
-		
-		// Lets replace the variables for social icons
-		//$new_post['post_content'] = preg_replace_callback('/\[pl_social ([^\]]*)\]/is', 'sitepad_handle_social_urls', $new_post['post_content']);
+			
+		// Lets replace the menu we created
+		if(!is_wp_error($menu_id)){
+			$new_post['post_content'] = preg_replace('/\[pl_wp_menu ([^\]]*)nav_list="(\d*)"([^\]]*)\]/is', '[pl_wp_menu ${1}nav_list="'.$menu_id.'"${3}]', $new_post['post_content']);
+		}
 		
 		// Now insert / update the post
 		$ret = pagelayer_insert_content($new_post, $err);
@@ -270,6 +414,7 @@ global $pagelayer, $pagelayer_theme, $pagelayer_theme_url, $pagelayer_theme_path
 		// Save our template type
 		update_post_meta($post_id, 'pagelayer_template_type', $v['type']);
 		update_post_meta($post_id, 'pagelayer_template_conditions', $v['conditions']);
+		update_post_meta($post_id, 'pagelayer_imported_content', $new_theme->template);
 		
 		// Any conditions having Page IDs that need to be updated ?
 		if(!empty($v['conditions'])){
@@ -314,6 +459,8 @@ global $pagelayer, $pagelayer_theme, $pagelayer_theme_url, $pagelayer_theme_path
 		
 	}
 	
+	$menu_pages = [];
+	
 	// Now check the pages if it exist in this installation ?
 	foreach($data['page'] as $k => $v){
 		
@@ -322,39 +469,46 @@ global $pagelayer, $pagelayer_theme, $pagelayer_theme_url, $pagelayer_theme_path
 		// Is the page there ?
 		$page = get_page_by_path($v['post_name']);
 		//r_print($page);
+			
+		$new_post = array();
 		
-		// Are we to insert the page ?
-		if(empty($page)){
+		// It does exist so save the revision IF its the header and footer
+		if(!empty($page) && isset($_POST['overwrite'])){
 			
-			$new_post = array();
+			$rev = wp_save_post_revision($page->ID);
 			
-			// Make an array
-			$new_post['post_content'] = file_get_contents($path);
-			$new_post['post_title'] = $v['post_title'];
-			$new_post['post_name'] = $v['post_name'];
-			$new_post['post_type'] = 'page';
-			$new_post['post_status'] = 'publish';			
-			//r_print($new_post);die();
+			$new_post['ID'] = $page->ID;
 			
-			// Lets replace the variables for social icons
-			//$new_post['post_content'] = preg_replace_callback('/\[pl_social ([^\]]*)\]/is', 'sitepad_handle_social_urls', $new_post['post_content']);
+		}
 			
-			// Now insert / update the post
-			$ret = pagelayer_insert_content($new_post, $err);
-			
-			// Did we save the post ?
-			if(empty($ret)){
-				die('Could not update the page '.$v['post_name']);
-			}
-			
-			$pages_id_map[$v['ID']] = $ret;
-			
-			// Does the screenshot exist ?
-			$screenshot_file = $pagelayer_theme_path.'/screenshots/'.$v['post_name'].'.jpg';
-			if(file_exists($screenshot_file)){
-				
-			}
+		// Make an array
+		$new_post['post_content'] = file_get_contents($path);
+		$new_post['post_title'] = $v['post_title'];
+		$new_post['post_name'] = $v['post_name'];
+		$new_post['post_type'] = 'page';
+		$new_post['post_status'] = 'publish';			
+		//r_print($new_post);die();
 		
+		// Lets replace the menu we created
+		if(!is_wp_error($menu_id)){
+			$new_post['post_content'] = preg_replace('/\[pl_wp_menu ([^\]]*)nav_list="(\d*)"([^\]]*)\]/is', '[pl_wp_menu ${1}nav_list="'.$menu_id.'"${3}]', $new_post['post_content']);
+		}
+		
+		// Now insert / update the post
+		$ret = pagelayer_insert_content($new_post, $err);
+		
+		// Did we save the post ?
+		if(empty($ret)){
+			die('Could not update the page '.$v['post_name']);
+		}
+		
+		update_post_meta($ret, 'pagelayer_imported_content', $new_theme->template);
+		
+		$pages_id_map[$v['ID']] = $ret;
+		
+		// Skip Header, Footer and Home pages
+		if(preg_match('/^home/is', $new_post['post_name'])){
+			$home_page = $ret;
 		}
 		
 	}
@@ -386,6 +540,119 @@ global $pagelayer, $pagelayer_theme, $pagelayer_theme_url, $pagelayer_theme_path
 	// Call a function for the theme if they want to execute something
 	$ret = apply_filters('pagelayer_theme_imported', get_template());
 	
+	if(isset($_POST['set_home_page'])){
+		
+		// Get the home page ID
+		$blog = get_page_by_path('blog');
+		
+		// Insert the blog page
+		if(empty($blog)){
+			
+			$new_post['post_content'] = '';
+			$new_post['post_title'] = 'Blog';
+			$new_post['post_name'] = 'blog';
+			$new_post['post_type'] = 'page';
+			$new_post['post_status'] = 'publish';
+		
+			// Now insert / update the post
+			$blog_id = wp_insert_post($new_post);
+			
+		}else{
+			$blog_id = $blog->ID;
+		}
+		
+		// Set the blog page
+		update_option('page_for_posts', $blog_id);
+		
+		// Set the blog page
+		update_option('show_on_front', 'page');
+		
+		// Set home page as the default page
+		if(!empty($home_page)){
+			update_option('page_on_front', $home_page);
+		}
+		
+	}
+	
+	// Update the menu
+	pagelayer_update_header_menu($menu_id, $pages_id_map);
+	
 	return true;
 
+}
+
+// Create the menu
+function pagelayer_create_header_menu(){
+		
+	// Create the menu if not exists
+	$menu_name = 'PFX Header Menu';
+	$menu_exists = wp_get_nav_menu_object($menu_name);
+	
+	// If there is no menu we will need to add it
+	if(!empty($menu_exists)){
+		wp_delete_nav_menu($menu_exists);
+	}
+	
+	// Insert the Menu
+	$menu_id = wp_create_nav_menu($menu_name);
+	
+	return $menu_id;
+
+}
+
+// Update the header menu
+function pagelayer_update_header_menu($menu_id, $pages){
+	
+	$menu_pages = [];
+	
+	$home = get_option('page_on_front');
+	if(!empty($home)){
+		$menu_pages[] = $home;
+	}
+	
+	$blog = get_option('page_for_posts');
+	if(!empty($blog)){
+		$menu_pages[] = $blog;
+	}
+	
+	// The other links
+	foreach($pages as $pk => $pv){
+		
+		// Skip Header, Footer and Home pages
+		if(in_array($pv, $menu_pages)){
+			continue;
+		}
+		
+		$menu_pages[] = $pv;
+		
+	}
+	
+	// Get the pages
+	foreach($menu_pages as $pk => $page_id){
+		$menu_pages[$pk] = get_post($page_id);
+	}
+	
+	// The other links
+	foreach($menu_pages as $pk => $pv){
+		
+		wp_update_nav_menu_item($menu_id, 0, array(
+			'menu-item-title' =>  $pv->post_title,
+			'menu-item-url' => home_url( '/'.$pv->post_name.'/' ),
+			'menu-item-status' => 'publish',
+			'menu-item-type' => 'post_type',
+			'menu-item-object' => 'page',
+			'menu-item-object-id' => $pv->ID));
+		
+	}
+	
+	// We need to enable auto add new pages
+	$options = (array) get_option('nav_menu_options');
+	
+	if (!isset($options['auto_add'])){
+		$options['auto_add'] = array();
+	}
+	
+	$options['auto_add'][] = $menu_id;
+	update_option('nav_menu_options', $options);
+	
 }

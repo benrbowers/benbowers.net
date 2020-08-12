@@ -783,6 +783,139 @@ $pagelayer->styles['border_styles'] = [
 	],
 ];
 
+$pagelayer->styles['font_style'] = [
+	'font_family' => [
+		'type'=> 'font_family',
+		'label' => __pl('font_family'),
+		'screen' => 1,
+		'css' => ['{{element}}' => 'font-family: {{val}} !important;'],
+	],
+	'font_size' => [
+		'type' => 'spinner',
+		'label' => __pl('font_size'),
+		'screen' => 1,
+		'min' => 0,
+		'step' => 1,
+		'max' => 200,
+		'css' => ['{{element}}' => 'font-size: {{val}}px !important;'],
+	],
+	'font_style' => [
+		'type' => 'select',
+		'label' => __pl('font_style'),
+		'screen' => 1,
+		'css' => ['{{element}}' => 'font-style: {{val}} !important'],
+		'list' => [
+			'' => 'Default',
+			'Normal' => 'Normal',
+			'Italic' => 'Italic',
+			'Oblique' => 'Oblique',
+		],
+	],
+	'font_weight' => [
+		'type' => 'select',
+		'label' => __pl('font_weight'),
+		'screen' => 1,
+		'css' => ['{{element}}' => 'font-weight: {{val}} !important'],
+		'list' => [
+			'0' => 'Default',
+			'100' => '100',
+			'200' => '200',
+			'300' => '300',
+			'400' => '400',
+			'500' => '500',
+			'600' => '600',
+			'700' => '700',
+			'800' => '800',
+			'900' => '900',
+			'normal' => 'Normal',
+			'lighter' => 'Lighter',
+			'bold' => 'Bold',
+			'bolder' => 'Bolder',
+			'unset' => 'Unset',
+		],
+	],
+	'font_variant' => [
+		'type' => 'select',
+		'label' => __pl('font_variant'),
+		'screen' => 1,
+		'css' => ['{{element}}' => 'font-variant: {{val}} !important'],
+		'list' => [
+			'' => 'Default',
+			'Normal' => 'Normal',
+			'Small-caps' => 'Small Caps',
+		],
+	],
+	'font_decoration_line' => [
+		'type' => 'select',
+		'label' => __pl('decoration_line'),
+		'screen' => 1,
+		'css' => ['{{element}}' => 'text-decoration-line: {{val}} !important'],
+		'list' => [
+			'none' => 'None',
+			'Overline' => 'Overline',
+			'Line-through' => 'Line Through',
+			'Underline' => 'Underline',
+			'Underline Overline' => 'Underline Overline',
+		],
+	],
+	'font_decoration_style' => [
+		'type' => 'select',
+		'label' => __pl('decoration_style'),
+		'screen' => 1,
+		'css' => ['{{element}}' => 'text-decoration-style: {{val}} !important'],
+		'list' => [
+			'' => __pl('none'),
+			'solid' => __pl('solid'),
+			'double' => __pl('double'),
+			'dotted' => __pl('dotted'),
+			'dashed' => __pl('dashed'),
+			'wavy' => __pl('Wavy'),
+		],
+		'req' => [
+			'!ele_font_decoration_line' => 'none',
+		],
+	],
+	'line_height' => [
+		'type' => 'spinner',
+		'label' => __pl('line_height'),
+		'screen' => 1,
+		'min' => 0,
+		'step' => 0.1,
+		'max' => 15,
+		'css' => ['{{element}}' => 'line-height: {{val}}em !important;'],
+	],
+	'text_transform' => [
+		'type' => 'select',
+		'label' => __pl('text_transform'),
+		'screen' => 1,
+		'css' => ['{{element}}' => 'text-transform: {{val}} !important'],
+		'list' => [
+			'' => 'Default',
+			'Capitalize' => 'Capitalize',
+			'Uppercase' => 'Uppercase',
+			'Lowercase' => 'Lowercase',
+		],
+	],
+	'text_spacing' => [
+		'type' => 'spinner',
+		'label' => __pl('text_spacing'),
+		'screen' => 1,
+		'min' => -10,
+		'step' => 0.1,
+		'max' => 10,
+		'css' => ['{{element}}' => 'letter-spacing: {{val}}px !important;'],
+	],
+	'word_spacing' => [
+		'type' => 'spinner',
+		'label' => __pl('word_spacing'),
+		'screen' => 1,
+		'min' => 0,
+		'step' => 1,
+		'max' => 50,
+		'css' => ['{{element}}' => 'word-spacing: {{val}}px !important;'],
+	],
+];
+
 $pagelayer->styles['position_styles'] = [
 	'ele_custom_pos' => array(
 		'type' => 'checkbox',
@@ -1846,6 +1979,16 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_row', array(
 				'desc' => __pl('video_src_desc'),
 				'req' => ['row_bg_type' => 'video']
 			),
+			'mute' => array(
+				'type' => 'checkbox',
+				'label' => __pl('mute'),
+				'req' => ['row_bg_type' => 'video']				
+			),			
+			'stop_loop' => array(
+				'type' => 'checkbox',
+				'label' => __pl('stop_loop'),
+				'req' => ['row_bg_type' => 'video']
+			),
 			'parallax_img' => array(
 				'type' => 'image',
 				'label' => __pl('Image'),
@@ -2329,6 +2472,16 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_col', array(
 				'type' => 'video',
 				'label' => __pl('video_src_label'),
 				'desc' => __pl('video_src_desc'),
+				'req' => ['col_bg_type' => 'video']
+			),
+			'mute' => array(
+				'type' => 'checkbox',
+				'label' => __pl('mute'),
+				'req' => ['col_bg_type' => 'video']				
+			),			
+			'stop_loop' => array(
+				'type' => 'checkbox',
+				'label' => __pl('stop_loop'),
 				'req' => ['col_bg_type' => 'video']
 			),
 			'parallax_img' => array(
@@ -4548,8 +4701,9 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_grid_gallery', array(
 		'group' => 'image',
 		'func' => 'pagelayer_sc_grid_gallery',
 		'html' =>	'<div class="pagelayer-grid-gallery-container">
-					{{ul}}
-		</div>',
+						{{ul}}
+					</div>
+					{{pagin}}',
 		'params' => array(
 			'ids' => array(
 				'type' => 'multi_image',
@@ -4670,6 +4824,14 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_grid_gallery', array(
 				'req' => array(
 					'caption' => 'true'
 				)
+			),
+			'images_no' => array(
+				'type' => 'spinner',
+				'label' => __pl('num_images'),
+				'min' => 0,
+				'step' => 1,
+				'max' => 1000,
+				'default' => 30
 			)
 		)
 	)
@@ -4908,8 +5070,10 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_btn', array(
 			'btn_bg_color_hover' => array(
 				'type' => 'color',
 				'label' => __pl('btn_bg_color_hover_label'),
-				'default' => '#00ff72',
-				'css' => ['{{element}} .pagelayer-btn-custom:hover' => 'background-color: {{val}};','{{element}} .pagelayer-btn-anim-slide:after' => 'background-color: {{val}};'],
+				'default' => '',
+				'css' => [
+					'{{element}} .pagelayer-btn-custom:hover, {{element}} .pagelayer-btn-anim-slide:after' => 'background-color: {{val}};',
+				],
 				'req' => array(
 					'type' => ['pagelayer-btn-custom','pagelayer-btn-anim'],
 					'!anim_type' => ['glow','thin'],
@@ -4956,7 +5120,10 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_btn', array(
 			'btn_border_type' => array(
 				'type' => 'select',
 				'label' => __pl('border_type'),
-				'css' => ['{{element}} .pagelayer-btn-holder' => 'border-style: {{val}}'],
+				'css' => [
+					'{{element}} .pagelayer-btn-holder, {{element}} .pagelayer-btn-anim-thin:after, {{element}} .pagelayer-btn-anim-thin:before' => 'border-style: {{val}};',
+					'{{element}} .pagelayer-btn-anim-thin' => 'border-style: unset !important;',
+					],
 				'list' => [
 					'' => __pl('none'),
 					'solid' => __pl('solid'),
@@ -4985,7 +5152,7 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_btn', array(
 				'type' => 'padding',
 				'label' => __pl('border_width'),
 				'screen' => 1,
-				'css' => ['{{element}} .pagelayer-btn-holder' => 'border-top-width: {{val[0]}}px; border-right-width: {{val[1]}}px; border-bottom-width: {{val[2]}}px; border-left-width: {{val[3]}}px'],
+				'css' => ['{{element}} .pagelayer-btn-holder, {{element}} .pagelayer-btn-anim-thin:after, {{element}} .pagelayer-btn-anim-thin:before' => 'border-top-width: {{val[0]}}px; border-right-width: {{val[1]}}px; border-bottom-width: {{val[2]}}px; border-left-width: {{val[3]}}px'],
 				'req' => [
 					'!btn_border_type' => ''
 				],
@@ -5010,7 +5177,10 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_btn', array(
 			'btn_border_type_hover' => array(
 				'type' => 'select',
 				'label' => __pl('border_type'),
-				'css' => ['{{element}} .pagelayer-btn-holder:hover' => 'border-style: {{val}}'],
+				'css' => [
+					'{{element}} .pagelayer-btn-holder:hover, {{element}} .pagelayer-btn-anim-thin:hover:after, {{element}} .pagelayer-btn-anim-thin:hover:before' => 'border-style: {{val}}',
+					'{{element}} .pagelayer-btn-anim-thin:hover' => 'border-style: unset !important;',
+				],
 				'list' => [
 					'' => __pl('none'),
 					'solid' => __pl('solid'),
@@ -5039,7 +5209,9 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_btn', array(
 				'type' => 'padding',
 				'label' => __pl('border_width_hover'),
 				'screen' => 1,
-				'css' => ['{{element}} .pagelayer-btn-holder:hover' => 'border-top-width: {{val[0]}}px; border-right-width: {{val[1]}}px; border-bottom-width: {{val[2]}}px; border-left-width: {{val[3]}}px'],
+				'css' => [
+					'{{element}} .pagelayer-btn-holder:hover, {{element}} .pagelayer-btn-anim-thin:hover:after, {{element}} .pagelayer-btn-anim-thin:hover:before' => 'border-top-width: {{val[0]}}px; border-right-width: {{val[1]}}px; border-bottom-width: {{val[2]}}px; border-left-width: {{val[3]}}px;'
+				],
 				'req' => [
 					'!btn_border_type_hover' => ''
 				],
@@ -5416,7 +5588,7 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_video', array(
 		'group' => 'media',
 		'func' => 'pagelayer_sc_video',
 		'html' => '<div class="pagelayer-video-holder pagelayer-video-{{video_ratio}}">
-			<iframe if="{{src}}" id="embed_video" class="pagelayer-video-iframe" width="100%" height="auto" src="{{vid_src}}"></iframe>
+			<iframe if="{{src}}" id="embed_video" class="pagelayer-video-iframe" width="100%" height="auto" src="{{vid_src}}" frameborder="0"></iframe>
 			<a if-ext={{lightbox}} href="{{{src-url}}}">
 				<div if={{overlay}} class="pagelayer-video-overlay" style="background-image:url("{{video_overlay_image-url}}");">
 					<i class="{{play_icon}}" aria-hidden="true"></i>
@@ -5446,7 +5618,7 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_video', array(
 			),
 			'mute' => array(
 				'type' => 'checkbox',
-				'label' => __pl('Mute'),						
+				'label' => __pl('mute'),						
 			),			
 			'loop' => array(
 				'type' => 'checkbox',
@@ -8581,8 +8753,15 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_email', array(
 		'icon' => 'fas fa-envelope',
 		'html' => '<div class="pagelayer-email-holder">
 			<span class="pagelayer-email-icon"><i class="{{icon}}"></i></span>
-			<span class="pagelayer-email">'.pagelayer_get_option('pagelayer_cf_to_email').'</span></div>',
+			<a if-ext="{{linked}}" href="mailto:'.pagelayer_get_option('pagelayer_cf_to_email').'">
+				<span class="pagelayer-email">'.pagelayer_get_option('pagelayer_cf_to_email').'</span></div>
+			</a>
+			</div>',
 		'params' => array(
+			'linked' => array(
+				'type' => 'checkbox',
+				'label' => __pl('make_link'),
+			),
 			'color' => array(
 				'type' => 'color',
 				'label' => __pl('color'),
@@ -8650,8 +8829,15 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_phone', array(
 		'icon' => 'fas fa-phone-alt',
 		'html' => '<div class="pagelayer-phone-holder">
 			<span class="pagelayer-phone-icon"><i class="{{icon}}"></i></span>
-			<span class="pagelayer-phone">'.pagelayer_get_option('pagelayer-phone').'</span></div>',
+			<a if-ext="{{linked}}" href="tel:'.pagelayer_get_option('pagelayer-phone').'">
+				<span class="pagelayer-phone">'.pagelayer_get_option('pagelayer-phone').'</span>
+			</a>
+			</div>',
 		'params' => array(
+			'linked' => array(
+				'type' => 'checkbox',
+				'label' => __pl('make_link'),
+			),
 			'color' => array(
 				'type' => 'color',
 				'label' => __pl('color'),
@@ -8834,7 +9020,13 @@ foreach($GLOBALS['wp_widget_factory']->widgets as $widget_key => $widget){
 			'group' => 'wordpress',
 			'func' => 'pagelayer_does_not_exist',
 			'innerHTML' => 'widget_data',
-			'widget' => $widget_key
+			'widget' => $widget_key,
+			'params'=>array(
+				'widget_data' => array(
+					'type' => 'text',
+					'not_visible' => 1,
+				)
+			)
 		)
 	);
 	

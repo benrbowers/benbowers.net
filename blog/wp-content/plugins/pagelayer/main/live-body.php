@@ -27,7 +27,7 @@ if(!defined('PAGELAYER_VERSION')) {
 
 function pagelayer_live_body(){
 
-global $post;
+global $post, $pagelayer;
 	
 	$icons = pagelayer_enabled_icons();
 	$icons_list = array();
@@ -46,7 +46,7 @@ global $post;
 	do_action('pagelayer_live_body_head');
 	
 	// Brand Name
-	$brand = (empty($GLOBALS['sitepad']) ? 'PAGELAYER' : 'SITEPAD');
+	$brand = strtoupper($pagelayer->BRAND_TEXT);
 	$brand = str_split($brand);
 	
 	echo '
@@ -90,7 +90,7 @@ global $post;
 					</div>
 					<div class="pagelayer-logo">
 						<span class="pagelayer-options-icon pli pli-menu" style="display:none"></span>
-						<img src="'.PAGELAYER_LOGO.'" width="32" /><span class="pagelayer-logo-text pagelayer-topbar-mover">'.PAGELAYER_BRAND_TEXT.'</span>
+						<img src="'.$pagelayer->LOGO.'" width="32" /><span class="pagelayer-logo-text pagelayer-topbar-mover">'.$pagelayer->BRAND_TEXT.'</span>
 						<span class="pagelayer-settings-icon pli pli-service" aria-hidden="true"></span>
 					</div>
 				</td>

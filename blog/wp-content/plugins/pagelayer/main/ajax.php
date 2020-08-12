@@ -161,6 +161,13 @@ function pagelayer_save_content(){
 					'post_content' => $content,
 				);
 		
+		$is_xss = pagelayer_xss_content($content);
+		 
+		if(!current_user_can('manage_options') && strlen($is_xss) > 0){
+			$msg['error'][] =  __pl('xss_found').' - '.$is_xss;
+			pagelayer_json_output($msg);
+		}
+		
 		// Any properties ?
 		if(!empty($_REQUEST['page_props'])){
 			
@@ -233,9 +240,105 @@ function pagelayer_save_content(){
 	}else{
 		$msg['error'] = __pl('post_update_err');
 	}
+	
+	// Save global widgets data
+	if(!empty($_REQUEST['global_widgets'])){
+		pagelayer_save_templ_content(true);
+	}
 
 	pagelayer_json_output($msg);
 	
+}
+
+// Save sections and global sections
+add_action('wp_ajax_pagelayer_save_templ_content', 'pagelayer_save_templ_content');
+function pagelayer_save_templ_content($echo = false){
+	
+	// Some AJAX security
+	check_ajax_referer('pagelayer_ajax', 'pagelayer_nonce');
+	
+	if ( ! current_user_can( get_post_type_object( 'pagelayer-template' )->cap->create_posts ) ) {
+		$ret['error'][$g_post_id] = __pl('no_permission');	
+		pagelayer_json_output($ret);
+		return false;
+	}
+	
+	// Are you allowed to edit ?
+	if(!pagelayer_user_can_edit($_REQUEST['postID'])){
+		$msg['error'][] =  __pl('no_permission');
+		pagelayer_json_output($msg);
+	}
+	
+	$ret = array();
+	
+	// Save global widgets data
+	if(empty($_REQUEST['global_widgets'])){
+		$ret['error'][] = 'No widgets given';	
+		pagelayer_json_output($ret);
+		return false;
+	}
+	
+	$global_widgets = $_REQUEST['global_widgets'];
+
+	foreach($global_widgets as $key => $value){
+		
+		$g_post_id = (int) $value['post_id'];
+		
+		// Are you allowed to edit ?
+		if(!empty($g_post_id) && !pagelayer_user_can_edit($g_post_id)){
+			$ret['error'][$g_post_id] =  __pl('no_permission').' : '.$g_post_id;
+			continue;
+		}
+		
+		$is_xss = pagelayer_xss_content($value['content']);
+		 
+		if(!current_user_can('manage_options') && strlen($is_xss) > 0){
+			$ret['error'][$g_post_id] =  __pl('xss_found').' - '.$is_xss;
+			pagelayer_json_output($ret);
+		}
+		
+		// We need to create the post
+		if(empty($value['post_id'])){
+			
+			$g_ret = wp_insert_post([
+				'post_type' => 'pagelayer-template',
+				'post_title' => $value['title'],
+				'post_content' => $value['content'],
+				'post_status' => 'publish',
+				'comment_status' => 'closed',
+				'ping_status' => 'closed'
+			]);
+			
+			$g_post_id = $g_ret;
+			
+			// Save our template metas
+			update_post_meta($g_post_id, 'pagelayer_template_type', $value['type']);
+			update_post_meta($g_post_id, 'pagelayer-data', time());
+			
+		}else if(!empty($value['content'])){
+			
+			// Save global widget content
+			$post = array(
+				'ID' => $g_post_id,
+				'post_title' => $value['title'],
+				'post_content' => $value['content'],
+			);
+			
+			wp_update_post($post);
+		}
+		
+		if(is_wp_error($g_post_id)){
+			$ret['error'][$g_post_id] = __pl('template_update_err');
+		}else{
+			$ret['success'][$g_post_id] = __pl('template_update_success');
+		}
+	}
+	
+	if(!$echo){ 
+		pagelayer_json_output($ret);
+	}else{
+		return $ret;
+	}
 }
 
 // Shortcodes Widget Handler
@@ -281,6 +384,9 @@ function pagelayer_givejs(){
 	
 	// Load shortcodes
 	pagelayer_load_shortcodes();
+	
+	// Load font options
+	//pagelayer_load_font_options();
 	
 	// Pagelayer Template Loading Mechanism
 	include_once(PAGELAYER_DIR.'/js/givejs.php');
@@ -550,6 +656,7 @@ function pagelayer_apply_revision(){
 		// Need to reload the shortcodes
 		pagelayer_load_shortcodes();
 		
+		$ret['id'] = $revisionID;
 		$ret['content'] = do_shortcode($post->post_content);
 		
 		if (is_wp_error($postID)) {
@@ -574,6 +681,7 @@ function pagelayer_delete_revision() {
 
 	$revisionID = (int) $_REQUEST['revisionID'];
 	$parID = wp_get_post_parent_id($revisionID);
+	$ret = array();
 	
 	// Are you allowed to edit ?
 	if(!pagelayer_user_can_edit($parID)){

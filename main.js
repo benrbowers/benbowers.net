@@ -13,7 +13,7 @@ let colors = [
     'blue'
 ];
 
-for (let i = 0; i < 20; i++) {
+for (let i = 0; i < 15; i++) {
     let color = Math.floor(Math.random() * colors.length);
     let radius = 20 + (Math.random() * 90);
     let ball = new Ball(radius, colors[color]);
