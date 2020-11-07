@@ -88,6 +88,13 @@ function pagelayer_wp_widget_ajax(){
 		
 		// Any data ?
 		if(!empty($data)){
+		
+			// Rss widget checkboxes fix
+			if(!empty($data['widget-rss'])){
+				$data['widget-rss']['pagelayer-widget-1234567890']['show_summary'] = empty($data['widget-rss']['pagelayer-widget-1234567890']['show_summary'])? 0 : 1;
+				$data['widget-rss']['pagelayer-widget-1234567890']['show_author'] = empty($data['widget-rss']['pagelayer-widget-1234567890']['show_author'])? 0 : 1;
+				$data['widget-rss']['pagelayer-widget-1234567890']['show_date'] = empty($data['widget-rss']['pagelayer-widget-1234567890']['show_date'])? 0 : 1;				
+			}
 			
 			// First key is useless
 			$data = current($data);
@@ -168,63 +175,18 @@ function pagelayer_save_content(){
 			pagelayer_json_output($msg);
 		}
 		
-		// Any properties ?
-		if(!empty($_REQUEST['page_props'])){
-			
-			$allowed = ['post_title', 'post_name', 'post_excerpt', 'post_status'];
-			
-			foreach($allowed as $k){
-				if(!empty($_REQUEST['page_props'][$k])){
-					$post[$k] = $_REQUEST['page_props'][$k];
-				}
-			}
-			
-			if(!empty($post['post_status']) && $post['post_status'] == 'publish'){
-				
-				// Allowed to publish pages ?
-				if($_post->post_type == 'page' && !current_user_can('publish_pages')){
-					$msg['error'][] =  __pl('no_publish_permission');
-					pagelayer_json_output($msg);
-				}
-				
-				// Allowed to publish posts ?
-				if($_post->post_type == 'post' && !current_user_can('publish_posts')){
-					$post['post_status'] = 'pending';
-				}
-			}
-			
-			$_REQUEST['page_props']['featured_image'] = (int) $_REQUEST['page_props']['featured_image'];
-			if(!empty($_REQUEST['page_props']['featured_image'])){
-				set_post_thumbnail($postID, $_REQUEST['page_props']['featured_image']);
-			}else{
-				delete_post_thumbnail($postID);
-			}
-			
-			$header_code = !empty($_REQUEST['page_props']['header_code']) ? $_REQUEST['page_props']['header_code'] : '' ;
-			$footer_code = !empty($_REQUEST['page_props']['footer_code']) ? $_REQUEST['page_props']['footer_code'] : '' ;
-			
-			// Set Custom header footer code
-			if(!empty($header_code)){
-				update_post_meta($postID, 'pagelayer_header_code', $header_code);
-			}else{
-				delete_post_meta($postID, 'pagelayer_header_code');
-			}
-			
-			if(!empty($footer_code)){
-				update_post_meta($postID, 'pagelayer_footer_code', $footer_code);
-			}else{
-				delete_post_meta($postID, 'pagelayer_footer_code');
-			}
-			
-		}
-		
 		// Any contact templates ?
 		if(!empty($_REQUEST['contacts'])){
 			update_post_meta($postID, 'pagelayer_contact_templates', $_REQUEST['contacts']);
 		}else{
 			delete_post_meta($postID, 'pagelayer_contact_templates');
 		}
-	
+		
+		// Save copyright
+		if(isset($_REQUEST['copyright']) && current_user_can('manage_options')){
+			update_option('pagelayer-copyright', wp_unslash($_REQUEST['copyright']));	
+		}
+		
 		// Apply a filter
 		$post = apply_filters('pagelayer_save_content', $post);
 		
@@ -341,6 +303,29 @@ function pagelayer_save_templ_content($echo = false){
 	}
 }
 
+// Update the Site Title
+add_action('wp_ajax_pagelayer_set_jscss_giver', 'pagelayer_set_jscss_giver');
+function pagelayer_set_jscss_giver(){
+	global $wpdb;
+
+	// Some AJAX security
+	check_ajax_referer('pagelayer_ajax', 'pagelayer_nonce');
+	
+	if( !current_user_can('manage_options') ){
+		$ret['error'] =  __pl('no_permission');
+		pagelayer_json_output($ret);
+	}
+	
+	$val = (int) @$_REQUEST['set'];
+	
+	if(in_array($val, [1, -1])){
+		update_option('pagelayer_enable_giver', $val);
+	}
+	
+	$ret['success'] =  1;
+	pagelayer_json_output($ret);
+}
+
 // Shortcodes Widget Handler
 add_action('wp_ajax_pagelayer_do_shortcodes', 'pagelayer_do_shortcodes');
 function pagelayer_do_shortcodes(){
@@ -361,10 +346,10 @@ function pagelayer_do_shortcodes(){
 	// Load shortcodes
 	pagelayer_load_shortcodes();
 
-	$data = do_shortcode($data);
+	$data = pagelayer_the_content($data);
 	
 	// Create the HTML object
-	$node = pQuery::parseStr($data);
+	$node = pagelayerQuery::parseStr($data);
 	$node->query('.pagelayer-ele')->removeClass('pagelayer-ele');
 	echo $node->html();
 	
@@ -386,10 +371,27 @@ function pagelayer_givejs(){
 	pagelayer_load_shortcodes();
 	
 	// Load font options
-	//pagelayer_load_font_options();
+	pagelayer_load_font_options();
 	
 	// Pagelayer Template Loading Mechanism
 	include_once(PAGELAYER_DIR.'/js/givejs.php');
+	
+	exit();
+	
+}
+
+add_action('wp_ajax_pagelayer_givecss', 'pagelayer_givecss');
+add_action('wp_ajax_nopriv_pagelayer_givecss', 'pagelayer_givecss');
+function pagelayer_givecss(){
+	
+	global $pagelayer;
+	
+	// WordPress adds the Expires header in all AJAX calls. We need to remove it for cache to work
+	header_remove("Expires");
+	header_remove("Cache-Control");
+			
+	// Pagelayer Template Loading Mechanism
+	include_once(PAGELAYER_DIR.'/css/givecss.php');
 	
 	exit();
 	
@@ -470,7 +472,7 @@ function pagelayer_get_section_shortcodes(){
 	pagelayer_load_shortcodes();
 	
 	if(!empty($data['code'])){
-		$data['code'] = do_shortcode($data['code']);
+		$data['code'] = pagelayer_the_content($data['code']);
 	}
 	
 	pagelayer_json_output($data);
@@ -633,6 +635,10 @@ function pagelayer_apply_revision(){
 	$parID = wp_get_post_parent_id($revisionID);
 	$ret = array();
 	
+	if(empty($parID)){
+		$parID = $revisionID;
+	}
+	
 	// Are you allowed to edit ?
 	if(!pagelayer_user_can_edit($parID)){
 		$ret['error'][] =  __pl('no_permission');
@@ -657,7 +663,7 @@ function pagelayer_apply_revision(){
 		pagelayer_load_shortcodes();
 		
 		$ret['id'] = $revisionID;
-		$ret['content'] = do_shortcode($post->post_content);
+		$ret['content'] = pagelayer_the_content($post->post_content);
 		
 		if (is_wp_error($postID)) {
 			$ret['error'] =  __pl('rev_load_error');
@@ -783,13 +789,14 @@ function pagelayer_post_comment() {
 	$GLOBALS['post'] = get_post($_REQUEST['postID']);
 	$GLOBALS['withcomments'] = true;
 	
-	if ( comments_open() || get_comments_number() ) {
-		echo '<div class="pagelayer-comments-template">'.comments_template().'</div>';
-	}else{
-		echo '<div class="pagelayer-comments-close">
-			<h2>Comments are closed!</h2>
-		</div>';
-	}
+	// Load shortcodes
+	pagelayer_load_shortcodes();
+	
+	$el = [];
+	pagelayer_sc_post_comment($el);
+	
+	echo $el['atts']['post_comment'];
+	
 	wp_die();
 		
 }
@@ -810,78 +817,10 @@ function pagelayer_post_info() {
 	
 	$GLOBALS['post'] = get_post($_REQUEST['postID']);
 	
-	$post_info_content ='';
-	$link ='';
-	$info_content ='';
-	$avatar_url ='';
+	// Load shortcodes
+	pagelayer_load_shortcodes();
 	
-	switch($el['atts']['type']){
-		case 'author':
-		
-			$link = get_author_posts_url( get_the_author_meta( 'ID' ) );
-			$avatar_url = get_avatar_url( get_the_author_meta( 'ID' ), 96 );
-			$post_info_content = get_the_author_meta( 'display_name', $post->post_author );
-			break;
-
-		case 'date':
-		
-			$format = [
-				'default' => 'F j, Y',
-				'0' => 'F j, Y',
-				'1' => 'Y-m-d',
-				'2' => 'm/d/Y',
-				'3' => 'd/m/Y',
-				'custom' => empty( $el['atts']['date_format_custom'] ) ? 'F j, Y' : $el['atts']['date_format_custom'],
-			];
-
-			$post_info_content = get_the_time( $format[ $el['atts']['date_format'] ] );
-			$link = get_day_link( get_post_time( 'Y' ), get_post_time( 'm' ), get_post_time( 'j' ) );
-				
-			break;
-
-		case 'time':
-		
-			$format = [
-				'default' => 'g:i a',
-				'0' => 'g:i a',
-				'1' => 'g:i A',
-				'2' => 'H:i',
-				'custom' =>  empty( $el['atts']['time_format_custom'] ) ? 'F j, Y' : $el['atts']['time_format_custom'],
-			];
-			$post_info_content = get_the_time( $format[ $el['atts']['time_format'] ] );
-			
-			break;
-
-		case 'comments':
-		
-			if (comments_open()) {
-				$post_info_content = (int) get_comments_number();
-				$link = get_comments_link();
-			}
-			
-			break;
-
-		case 'terms':
-		
-			$taxonomy = $el['atts']['taxonomy'];
-			$terms = wp_get_post_terms( get_the_ID(), $taxonomy );
-			foreach ( $terms as $term ) {
-				$post_info_content .= ' <a if-ext="{{info_link}}" href="'. get_term_link( $term ) .'" class="pagelayer-post-info-list-link"> '. $term->name .' </a>';
-			}
-			
-			break;
-
-		case 'custom':
-		
-			$post_info_content = $el['atts']['type_custom'];
-			$link = $el['atts']['info_custom_link'];
-
-			break;
-	}
-				
-	$el['atts']['post_info_content'] = $post_info_content;
-	$el['atts']['avatar_url'] = $avatar_url;
-	$el['atts']['link'] = $link;
+	pagelayer_sc_post_info_list($el);
 	
 	pagelayer_json_output($el['atts']);
 		
@@ -936,8 +875,8 @@ function pagelayer_archive_posts_data(){
 	check_ajax_referer('pagelayer_ajax', 'pagelayer_nonce');
 	
 	// Set excerpt length
-	if($_POST['exc_length']){
-		$exc_length = (int) $params['exc_length'];
+	if(!empty($_POST['atts']['exc_length'])){
+		$exc_length = (int) $_POST['atts']['exc_length'];
 		add_filter( 'excerpt_length', function($length) use($exc_length){
 			return $exc_length;
 		}, 999 );
@@ -945,8 +884,20 @@ function pagelayer_archive_posts_data(){
 	
 	// Load shortcodes
 	pagelayer_load_shortcodes();
+	
+	foreach($_POST['atts'] as $k => $v){
+		$r[] = $k.'="'.pagelayer_escapeHTML($v).'"';
+	}
+	
+	$string = implode(' ', $r);
+	if(preg_match('/\]/is', $string)){
+		die('Hacking Attempt');
+	}
+	
+	$sc = '[pl_archive_posts '.$string.'][/pl_archive_posts]';
+	
 	// TODO : Allowed
-	echo pagelayer_posts($_POST, $_POST['pagelayer_wp_query']);
+	echo pagelayer_the_content($sc);
 	wp_die();
 }
 
@@ -957,6 +908,12 @@ function pagelayer_contact_submit(){
 	
 	// Some AJAX security
 	check_ajax_referer('pagelayer_global', 'pagelayer_nonce');
+	
+	// A filter to short circuit this contact form
+	$continue = apply_filters('pagelayer_contact_submit_start', 1);	
+	if(empty($continue)){
+		return false;
+	}
 	
 	$formdata = $_POST;
 	
@@ -977,6 +934,7 @@ function pagelayer_contact_submit(){
 	$from_mail = get_option('pagelayer_cf_from_email');
 	$subject = get_option('pagelayer_cf_subject');
 	$additional_headers = get_option('pagelayer_cf_headers');
+	$reply_to = '';
 	$body = '';
 	$headers = '';
 	$custom_templ = array();
@@ -1043,6 +1001,11 @@ function pagelayer_contact_submit(){
 				continue;
 			}
 			
+			// Record a reply to if it is to be used
+			if(is_email(trim($i)) && empty($reply_to)){
+				$reply_to = trim($i);
+			}
+			
 			$body .= $k."\t : \t $".$k."\n";
 		}
 		
@@ -1050,10 +1013,18 @@ function pagelayer_contact_submit(){
 	
 	}
 	
+	// Dow we have a reply to in the headers ?
+	if(!preg_match('/reply\-to/is', $headers) && !empty($reply_to)){
+		$headers .= "Reply-To: $reply_to\n";
+	}
+	
 	// Add attachment
 	if(!empty($_FILES)){
 		add_action('phpmailer_init', 'pagelayer_cf_email_attachment', 10, 1);
 	}
+	
+	// Add Site Title as option in formdata
+	$formdata['site_title'] = get_bloginfo( 'name' );
 	
 	// Do parse a variables
 	$to_mail = pagelayer_replace_vars($to_mail, $formdata, '$');
@@ -1073,8 +1044,12 @@ function pagelayer_contact_submit(){
 		$body = $header . wpautop( $body ) . $footer;
 	}
 	
+	$to_mail = apply_filters('pagelayer_contact_send', $to_mail, $formdata);
+	
 	// Send the email
-	$r = wp_mail( $to_mail, $subject, $body, $headers );
+	if(!empty($to_mail)){
+		$r = wp_mail( $to_mail, $subject, $body, $headers );
+	}
 	
 	if($r == TRUE){
 		$wp['success'] = get_option( 'pagelayer_cf_success' );
@@ -1233,6 +1208,21 @@ function pagelayer_search_ids() {
 				$sel_opt .= '<span class="pagelayer-temp-search-sel-span" value="'. $author->ID .'">'. $author->display_name .'</span>';
 			}
 			break;
+			
+	/*	case 'menu':
+			
+			$menuItems = wp_get_nav_menu_items( $_POST['object_type']);
+			
+			foreach ( $menuItems as $item ) {
+				if($item -> menu_item_parent !=0){
+					continue;
+				}
+				$sel_opt .= '<span class="pagelayer-temp-search-sel-span" value="'. $item -> ID .'">'. $item -> title .'</span>';
+			}
+
+			break;*/
+		
+			
 		default:
 			$sel_opt = 'Result Not Found';
 	}
@@ -1455,7 +1445,7 @@ function pagelayer_product_categories(){
 	$shortcode = '[product_categories '. $attributes .']';
 	
 	// do_shortcode the shortcode
-	echo do_shortcode($shortcode);
+	echo pagelayer_the_content($shortcode);
 		
 	wp_die();
 }
@@ -1467,36 +1457,14 @@ function pagelayer_product_archives(){
 	// Some AJAX security
 	check_ajax_referer('pagelayer_ajax', 'pagelayer_nonce');
 	
-	if ( WC()->session ) {
-		wc_print_notices();
-	}
+	// Load Shortcodes
+	pagelayer_load_shortcodes();
 	
-	$atts['paginate'] = true;
-	$atts['cache'] = false;
-	$no_found = $_POST['atts']['no_found'];
-		
-	if( empty($_POST['atts']['allow_order']) ){
-		remove_action( 'woocommerce_before_shop_loop', 'woocommerce_catalog_ordering', 30 );
-	}
-	if( empty($_POST['atts']['show_result']) ){
-		remove_action( 'woocommerce_before_shop_loop', 'woocommerce_result_count', 20 );
-	}
-			
-	$type = 'pagelayer_current_query';
-	
-	// Set the current query 
-	add_action( 'woocommerce_shortcode_products_query', 'pagelayer_shortcode_current_query', 10, 10);
-	
-	// If product not found
-	add_action( "woocommerce_shortcode_{$type}_loop_no_results", function ($attributes) use ($no_found){
-		echo '<div class="pagelayer-product-no-found">'.$no_found.'</div>';
-	} );
-	
-	// Get the products list
-	$shortcode = new WC_Shortcode_Products( $atts, $type );
+	// Call the function
+	pagelayer_sc_product_archives($_POST);
 
-	echo $shortcode->get_content();
-		
+	echo $_POST['atts']['product_archives'];
+	
 	wp_die();
 }
 
@@ -1559,7 +1527,7 @@ function pagelayer_products_ajax(){
 		
 	$shortcode = '['.$type.' '. $attributes .']';
 	
-	$content = do_shortcode($shortcode);
+	$content = pagelayer_the_content($shortcode);
 	
 	// If product not found
 	if('<div class="woocommerce columns-'.$_POST['atts']['columns'] .' "></div>' == $content){
@@ -1626,6 +1594,9 @@ function pagelayer_export_template(){
 		pagelayer_json_output($done);
 	}
 	
+	// Load Shortcodes
+	pagelayer_load_shortcodes();
+	
 	// Get the active theme
 	$theme_dir = get_stylesheet_directory();
 	$conf = [];
@@ -1653,41 +1624,70 @@ function pagelayer_export_template(){
 	
 	// Write the config
 	file_put_contents($theme_dir.'/pagelayer.conf', json_encode($conf, JSON_PRETTY_PRINT));
-	
-	// Any pages to export for users ?
-	if(!empty($_POST['pages'])){
-		
-		mkdir($theme_dir.'/data/');
-		mkdir($theme_dir.'/data/page');
-		
-		$conf = [];
-		
-		// Load the pages
-		$pages_query = new WP_Query(['post_type' => 'page', 'status' => 'publish']);
-		$pages = $pages_query->posts;
-	
-		// Write the files
-		foreach($pages as $k => $v){
 			
-			if(!isset($_POST['pages'][$v->ID])){
-				continue;
+	$conf = [];
+	
+	// Load the other posts
+	foreach($pagelayer->settings['post_types'] as $type){
+		
+		// Anything to export for users ?
+		if(!empty($_POST[$type]) && is_array($_POST[$type])){
+			
+			mkdir($theme_dir.'/data/');
+			mkdir($theme_dir.'/data/'.$type);
+			
+			$pids = [];
+			
+			foreach($_POST[$type] as $k => $v){
+				$pids[] = (int) $k;
 			}
-		
-			file_put_contents($theme_dir.'/data/page/'.$v->post_name, pagelayer_export_content($v->post_content));
-			unset($v->post_content);
-			$conf['page'][$v->post_name] = $v;
 			
-			do_action('pagelayer_page_exported', $v, $theme_dir);
+			// Load the type
+			$_query = new WP_Query([
+				'post_type' => $type,
+				'status' => 'publish',
+				'post__in' => $pids
+			]);
 			
-		}
+			$posts = $_query->posts;
 		
-		if(get_option('pagelayer_body_font')){
-			$conf['conf']['pagelayer_body_font'] = get_option('pagelayer_body_font');
+			// Write the files
+			foreach($posts as $k => $v){
+			
+				file_put_contents($theme_dir.'/data/'.$type.'/'.$v->post_name, pagelayer_export_content($v->post_content));
+				unset($v->post_content);
+				
+				$meta = get_post_meta($v->ID);
+				
+				// Also put the meta
+				file_put_contents($theme_dir.'/data/'.$type.'/'.$v->post_name.'.meta', json_encode($meta, JSON_PRETTY_PRINT));
+				
+				$conf[$type][$v->post_name] = $v;
+				
+				do_action('pagelayer_'.$type.'_exported', $v, $theme_dir);
+				
+			}
+			
 		}
 	
-		// Write the config
-		file_put_contents($theme_dir.'/pagelayer-data.conf', json_encode($conf, JSON_PRETTY_PRINT));
+	}
+	
+	// Export the settings
+	$settings = ['pagelayer_content_width', 'pagelayer_body_font', 'pagelayer_tablet_breakpoint', 'pagelayer_mobile_breakpoint', 'pagelayer_body_typography', 'pagelayer_h1_typography', 'pagelayer_h2_typography', 'pagelayer_h3_typography', 'pagelayer_h4_typography', 'pagelayer_h5_typography', 'pagelayer_h6_typography', 'pagelayer_color', 'pagelayer_header_code', 'pagelayer_footer_code', 'pagelayer_sidebar'];
+	
+	foreach($settings as $v){
 		
+		$vv = get_option($v);
+		
+		if($vv){
+			$conf['conf'][$v] = $vv;
+		}
+	
+	}
+
+	// Write the config
+	if(!empty($conf)){
+		file_put_contents($theme_dir.'/pagelayer-data.conf', json_encode($conf, JSON_PRETTY_PRINT));
 	}
 	
 	// Are we to export any media ?

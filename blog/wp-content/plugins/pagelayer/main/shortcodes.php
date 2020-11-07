@@ -315,6 +315,7 @@ $pagelayer->slider_options = [
 	'slide_items' => array(
 		'type' => 'spinner',
 		'label' => __pl('number_of_items'),
+		'np' => 1,
 		'min' => 1,
 		'step' => 1,
 		'max' => 10,
@@ -425,7 +426,7 @@ $pagelayer->styles['ele_bg_styles'] = [
 		'type' => 'color',
 		'label' => __pl('color'),
 		'default' => '',
-		'desc' => __pl('fallback background color if image is failed to load.'),
+		'desc' => __pl('fallback_color'),
 		'css' => 'background-color: {{val}};',
 		'show' => ['ele_bg_hover' => ''],
 		'req' => ['ele_bg_type' => 'image']
@@ -1851,7 +1852,6 @@ $pagelayer->styles['custom_styles'] = [
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_row', array(
 		'name' => __pl('row'),
 		'group' => 'grid',
-		'func' => 'pagelayer_sc_row',
 		'skip_props_cat' => ['position_styles'],
 		'skip_props' => ['ele_sticky_in_container'],
 		'html' => '<div if="{{bg_video_src}}" class="pagelayer-background-video">{{vid_src}}</div>
@@ -1922,7 +1922,7 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_row', array(
 				'max' => 3000,
 				'screen' => 1,
 				'units' => [ 'px', '%', 'vw' ],
-				'css' => ['{{element}} .pagelayer-row-holder' => 'max-width: {{val}}; margin-left: auto; margin-right: auto;'],
+				'css' => ['{{element}}>.pagelayer-row-holder' => 'max-width: {{val}}; margin-left: auto; margin-right: auto;'],
 				'req' => array(
 					'width_content' => 'fixed'
 				)
@@ -2392,7 +2392,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_row', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_col', array(
 		'name' => __pl('column'),
 		'group' => 'grid',
-		'func' => 'pagelayer_sc_col',
 		'skip_props_cat' => ['position_styles'],
 		'skip_props' => ['ele_sticky_in_container'],
 		'html' => '<div if="{{bg_video_src}}" class="pagelayer-background-video">{{vid_src}}</div>
@@ -2768,9 +2767,8 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_col', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_heading', array(
 		'name' => __pl('title'),
 		'group' => 'text',
-		'func' => 'pagelayer_sc_heading',
 		'innerHTML' => 'text',
-		'html' => '<a if-ext="{{link}}" href="{{link}}">
+		'html' => '<a if-ext="{{link}}" href="{{{link}}}">
 			<div if={{text}} class="pagelayer-heading-holder">{{text}}</div>
 		</a>',
 		'params' => array(
@@ -2820,7 +2818,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_heading', array(
 			'color' => array(
 				'type' => 'color',
 				'label' => __pl('color'),
-				'default' => '#111111',
 				'css' => ['{{element}} .pagelayer-heading-holder *' => 'color:{{val}}', '{{element}} .pagelayer-heading-holder' => 'color:{{val}}'],
 				'show' => ['heading_state' => 'normal']
 			),
@@ -2869,7 +2866,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_heading', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_text', array(
 		'name' => __pl('Rich Text'),
 		'group' => 'text',
-		'func' => 'pagelayer_sc_code',
 		'innerHTML' => 'text',
 		'html' => '<div class="pagelayer-text-holder">{{text}}</div>',
 		'params' => array(
@@ -2897,12 +2893,11 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_quote', array(
 					<i if="{{double_indent}}" class="fa fa-quote-right"></i>
 				</div>
 				<div if="{{cite}}" class="pagelayer-quote-cite">
-					<a if-ext="{{cite_url}}" href="{{cite_url}}">
+					<a if-ext="{{cite_url}}" href="{{{cite_url}}}">
 						<span class="pagelayer-cite-holder">{{cite}}</span>
 					</a>
 				</div>
 			</div>',
-		'func' => 'pagelayer_sc_quote',
 		'params' => array(		
 			'quote_content' => array(
 				'type' => 'textarea',
@@ -3125,10 +3120,9 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_list_item', array(
 		'name' => __pl('list_item'),
 		'group' => 'text',
 		'not_visible' => 1,
-		'func' => 'pagelayer_sc_list_item',
 		'innerHTML' => 'item',
 		'html' => '<li if="{{item}}" class="pagelayer-list-li">
-				<a if-ext="{{item_url}}" class="pagelayer-list-url pagelayer-ele-link" href="{{item_url}}">
+				<a if-ext="{{item_url}}" class="pagelayer-list-url pagelayer-ele-link" href="{{{item_url}}}">
 					<span class="pagelayer-list-icon-holder">
 						<i if="{{show_icon}}" class="pagelayer-list-icon {{icon}}"></i>
 						<span if="{{item}}" class="pagelayer-list-item">{{item}}</span>
@@ -3143,7 +3137,7 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_list_item', array(
 				'edit' => '.pagelayer-list-item',
 			),
 			'item_url' => array(
-				'type' => 'text',
+				'type' => 'link',
 				'label' => __pl('list_item_url_label'),
 			),
 			'show_icon' => array(
@@ -3167,7 +3161,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_list_item', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_list', array(
 		'name' => __pl('list'),
 		'group' => 'text',
-		'func' => 'pagelayer_sc_list',
 		'has_group' => [
 			'section' => 'params', 
 			'prop' => 'elements'
@@ -3406,9 +3399,8 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_list', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_icon', array(
 		'name' => __pl('icon'),
 		'group' => 'text',
-		'func' => 'pagelayer_sc_icon',
 		'html' => '<div class="pagelayer-icon-holder">
-					<a if-ext="{{link}}" class="pagelayer-ele-link" href="{{link}}">
+					<a if-ext="{{link}}" class="pagelayer-ele-link" href="{{{link}}}">
 						<i class="{{icon}} {{bg_shape}} {{icon_size}} pagelayer-animation-{{anim_hover}}"></i>
 					</a>
 				</div>',
@@ -3812,15 +3804,14 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_icon', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_badge', array(
 		'name' => __pl('Badge'),
 		'group' => 'text',
-		'func' => 'pagelayer_sc_badge',
 		'innerHTML' => 'title',
 		'html' => '<div class="pagelayer-badge-span">
 					<span if="{{text}}" class="pagelayer-badge-text">{{text}}</span>
-					<a if-ext="{{badge_url}}" class="pagelayer-ele-link" href="{{badge_url}}">
+					<a if-ext="{{badge_url}}" class="pagelayer-ele-link" href="{{{badge_url}}}">
 						<span if="{{badge_text}}" class="pagelayer-badge-title pagelayer-badge-details pagelayer-badge-{{badge_notification_type}} pagelayer-badge-{{badge_style_type}}">{{badge_text}}</span>
 					</a>
 				</div>
-				<a if-ext="{{badge_url}}" class="pagelayer-ele-link" href="{{badge_url}}">
+				<a if-ext="{{badge_url}}" class="pagelayer-ele-link" href="{{{badge_url}}}">
 					<button class="pagelayer-badge-title pagelayer-badge-btn pagelayer-btn-{{badge_btn_type}}">
 						<span if="{{text}}" class="pagelayer-badge-text">{{text}}</span>
 						<span if="{{badge_text}}" class="pagelayer-badge-details pagelayer-badge-{{badge_notification_type}} pagelayer-badge-{{badge_style_type}}">{{badge_text}}</span>
@@ -4018,7 +4009,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_badge', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_tooltip', array(
 		'name' => __pl('Tooltip'),
 		'group' => 'text',
-		'func' => 'pagelayer_sc_tooltip',
 		'innerHTML' => 'tooltip_text',
 		'html' => '<div class="pagelayer-tooltip-container">
 					<span if="{{tooltip_icon}}" class="pagelayer-tooltip-icon"><i class="{{tooltip_icon}}"></i></span>
@@ -4199,7 +4189,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_tooltip', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_image', array(
 		'name' => __pl('image'),
 		'group' => 'image',
-		'func' => 'pagelayer_sc_image',
 		'innerHTML' => 'text',
 		'html' => '<div class="pagelayer-image-holder">
 			<a if-ext="{{link_type}}" class="pagelayer-ele-link" href="{{func_link}}" pagelayer-image-link-type="{{link_type}}">
@@ -4545,7 +4534,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_image_slider', array(
 		'html' => '<div class="pagelayer-image-slider-div">
 			<ul class="pagelayer-image-slider-ul pagelayer-owl-holder pagelayer-owl-carousel pagelayer-owl-theme">{{ul}}</ul>
 		</div>',
-		'func' => 'pagelayer_sc_image_slider',
 		'settings' => [
 			'params' => __pl('Image Slider'),
 			'slider_options' => __pl('slider_options'),
@@ -4699,7 +4687,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_image_slider', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_grid_gallery', array(
 		'name' => __pl('Grid Gallery'),
 		'group' => 'image',
-		'func' => 'pagelayer_sc_grid_gallery',
 		'html' =>	'<div class="pagelayer-grid-gallery-container">
 						{{ul}}
 					</div>
@@ -4828,6 +4815,7 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_grid_gallery', array(
 			'images_no' => array(
 				'type' => 'spinner',
 				'label' => __pl('num_images'),
+				'desc' => __pl('images_in_page'),
 				'min' => 0,
 				'step' => 1,
 				'max' => 1000,
@@ -4847,7 +4835,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_grid_gallery', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_btn', array(
 		'name' => __pl('button'),
 		'group' => 'button',
-		'func' => 'pagelayer_sc_btn',
 		'html' => '<a class="pagelayer-btn-holder pagelayer-ele-link {{type}} {{size}} {{icon_position}}">
 					<i if="{{icon}}" class="{{icon}} pagelayer-btn-icon"></i>
 					<span if="{{text}}" class="pagelayer-btn-text">{{text}}</span>
@@ -4864,7 +4851,7 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_btn', array(
 				'type' => 'link',
 				'label' => __pl('button_link_label'),
 				'desc' => __pl('button_link_desc'),
-				'addAttr' => ['{{element}} .pagelayer-btn-holder' => 'href="{{link}}"']
+				'addAttr' => ['{{element}} .pagelayer-btn-holder' => 'href="{{{link}}}"']
 			),
 			'rel' => array(
 				'type' => 'text',
@@ -5247,10 +5234,9 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_btn', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_social', array(
 		'name' => __pl('Social Profile'),
 		'group' => 'button',
-		'func' => 'pagelayer_sc_social',
 		'not_visible' => 1,
 		'html' => '<div class="pagelayer-icon-holder">
-					<a if-ext="{{social_url}}" class="pagelayer-ele-link" href="{{social_url}}">
+					<a if-ext="{{social_url}}" class="pagelayer-ele-link" href="{{{social_url}}}">
 						<i class="pagelayer-social-fa {{icon}}"></i>
 					</a>
 				</div>',
@@ -5276,7 +5262,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_social', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_social_grp', array(
 		'name' => __pl('Social Profile'),
 		'group' => 'button',
-		'func' => 'pagelayer_sc_social_grp',
 		'has_group' => [
 			'section' => 'params', 
 			'prop' => 'elements'
@@ -5409,6 +5394,40 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_social_grp', array(
 				),
 				'show' => ['social_hover' => '']
 			),
+			'anim_hover' => array(
+				'type' => 'select',
+				'label' => __pl('icon_animation'),
+				'list' => [
+					'' => __pl('none'),
+					'grow' => __pl('Grow'),
+					'shrink' => __pl('Shrink'),
+					'pulse' => __pl('Pulse'),
+					'pulse-grow' => __pl('Pulse Grow'),
+					'pulse-shrink' => __pl('Pulse Shrink'),
+					'push' => __pl('Push'),
+					'pop' => __pl('Pop'),
+					'buzz' => __pl('Buzz'),
+					'buzz-out' => __pl('Buzz Out'),
+					'float' => __pl('Float'),
+					'sink' => __pl('Sink'),
+					'bob' => __pl('Bob'),
+					'hang' => __pl('Hang'),
+					'bounce-in' => __pl('Bounce In'),
+					'bounce-out' => __pl('Bounce Out'),
+					'rotate' => __pl('Rotate'),
+					'grow-rotate' => __pl('Grow Rotate'),
+					'skew-forward' => __pl('Skew Forward'),
+					'skew-backward' => __pl('Skew Backward'),
+					'wobble-vertical' => __pl('Wobble Vertical'),
+					'wobble-horizontal' => __pl('Wobble Horizontal'),
+					'wobble-bottom-to-right' => __pl('Wobble Bottom To Right'),
+					'wobble-top-to-right' => __pl('Wobble Top To Right'),
+					'wobble-top' => __pl('Wobble Top'),
+					'wobble-bottom' => __pl('Wobble Bottom'),
+					'wobble-skew' => __pl('Wobble Skew'),
+				],
+				'addAttr' => 'pagelayer-animation="{{anim_hover}}"'
+			),
 			'icon_border_type' => array(
 				'type' => 'select',
 				'label' => __pl('border_type'),
@@ -5467,43 +5486,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_social_grp', array(
 				'show' => array(
 					'social_hover' => 'hover'
 				),
-			),
-			'anim_hover' => array(
-				'type' => 'select',
-				'label' => __pl('icon_animation'),
-				'list' => [
-					'' => __pl('none'),
-					'grow' => __pl('Grow'),
-					'shrink' => __pl('Shrink'),
-					'pulse' => __pl('Pulse'),
-					'pulse-grow' => __pl('Pulse Grow'),
-					'pulse-shrink' => __pl('Pulse Shrink'),
-					'push' => __pl('Push'),
-					'pop' => __pl('Pop'),
-					'buzz' => __pl('Buzz'),
-					'buzz-out' => __pl('Buzz Out'),
-					'float' => __pl('Float'),
-					'sink' => __pl('Sink'),
-					'bob' => __pl('Bob'),
-					'hang' => __pl('Hang'),
-					'bounce-in' => __pl('Bounce In'),
-					'bounce-out' => __pl('Bounce Out'),
-					'rotate' => __pl('Rotate'),
-					'grow-rotate' => __pl('Grow Rotate'),
-					'skew-forward' => __pl('Skew Forward'),
-					'skew-backward' => __pl('Skew Backward'),
-					'wobble-vertical' => __pl('Wobble Vertical'),
-					'wobble-horizontal' => __pl('Wobble Horizontal'),
-					'wobble-bottom-to-right' => __pl('Wobble Bottom To Right'),
-					'wobble-top-to-right' => __pl('Wobble Top To Right'),
-					'wobble-top' => __pl('Wobble Top'),
-					'wobble-bottom' => __pl('Wobble Bottom'),
-					'wobble-skew' => __pl('Wobble Skew'),
-				],
-				'show' => array(
-					'social_hover' => 'hover',
-				),
-				'addAttr' => 'pagelayer-animation="{{anim_hover}}"',
 			),
 			'icon_color_hover' => array(
 				'type' => 'color',
@@ -5586,11 +5568,10 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_social_grp', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_video', array(
 		'name' => __pl('video'),
 		'group' => 'media',
-		'func' => 'pagelayer_sc_video',
 		'html' => '<div class="pagelayer-video-holder pagelayer-video-{{video_ratio}}">
 			<iframe if="{{src}}" id="embed_video" class="pagelayer-video-iframe" width="100%" height="auto" src="{{vid_src}}" frameborder="0"></iframe>
 			<a if-ext={{lightbox}} href="{{{src-url}}}">
-				<div if={{overlay}} class="pagelayer-video-overlay" style="background-image:url("{{video_overlay_image-url}}");">
+				<div if={{overlay}} class="pagelayer-video-overlay" style="background-image:url({{video_overlay_image-url}});">
 					<i class="{{play_icon}}" aria-hidden="true"></i>
 				</div>
 			</a>
@@ -5599,7 +5580,7 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_video', array(
 			'src' => array(
 				'type' => 'video',
 				'label' => __pl('video_src_label'),
-				'default' => 'https://www.youtube.com/watch?v=VT7WfVp1owQ',
+				'default' => 'https://www.youtube.com/watch?v=t8Iz-v-qce8',
 				'desc' => __pl('video_src_desc'),				
 			),
 			'lightbox' => array(
@@ -5706,20 +5687,19 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_video', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_service', array(
 		'name' => __pl('Image Box'),
 		'group' => 'other',
-		'func' => 'pagelayer_sc_service',
 		'innerHTML' => 'service_text',
 		'html' => '<div class="pagelayer-service-container pagelayer-service-align-{{service_alignment}} pagelayer-service-vertical-{{service_vertical_alignment}}">
 			<div if="{{service_image}}" class="pagelayer-service-image">
 				<img class="pagelayer-img pagelayer-animation-{{anim_hover}}" src="{{func_image}}">
 			</div>
 			<div class="pagelayer-service-details">
-				<a if-ext={{heading_url}} href="{{heading_url}}" class="pagelayer-ele-link">
+				<a if-ext={{heading_url}} href="{{{heading_url}}}" class="pagelayer-ele-link">
 					<div if={{service_heading}} class="pagelayer-service-heading">{{service_heading}}</div>
 				</a>
 				<div if={{service_text}} class="pagelayer-service-text">{{service_text}}</div>
-				<a if="{{service_button}}" href="{{service_button_url}}" class="pagelayer-service-btn {{service_button_type}} pagelayer-ele-link pagelayer-button {{service_button_size}}">{{service_button_text}}</a>
+				<a if="{{service_button}}" href="{{{service_button_url}}}" class="pagelayer-service-btn {{service_button_type}} pagelayer-ele-link pagelayer-button {{service_button_size}}">{{service_button_text}}</a>
 			</div>
-			<a if-ext={{box_url}} href="{{box_url}}" class="pagelayer-ele-link pagelayer-box-link"> </a>
+			<a if-ext={{box_url}} href="{{{box_url}}}" class="pagelayer-ele-link pagelayer-box-link"> </a>
 		</div>',
 		'params' => [
 			'service_image' => array(
@@ -5753,6 +5733,14 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_service', array(
 				'type' => 'link',
 				'label' => __pl('url'),
 			),
+			'box_target' => array(
+				'label' => __pl('open_link_in_new_window'),
+				'type' => 'checkbox',
+				'addAttr' => ['{{element}} .pagelayer-box-link' => 'target="_blank"'],
+				'req' => array(
+					'!box_url' => ''
+				)
+			),
 			'anim_hover' => array(
 				'type' => 'select',
 				'label' => __pl('icon_animation'),
@@ -5785,6 +5773,7 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_service', array(
 					'wobble-bottom' => __pl('Wobble Bottom'),
 					'wobble-skew' => __pl('Wobble Skew'),
 				],
+				'addClass' => 'pagelayer-anim-par'
 			)
 		],
 		'service_img_style' => [
@@ -5994,7 +5983,13 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_service', array(
 			'heading_url' => array(
 				'type' => 'link',
 				'label' => __pl('url'),
-				'req' => ['!service_heading' => '']
+				'req' => ['!service_heading' => '', 'box_url' => '']
+			),
+			'heading_target' => array(
+				'label' => __pl('open_link_in_new_window'),
+				'type' => 'checkbox',
+				'addAttr' => ['{{element}} .pagelayer-service-details a' => 'target="_blank"'],
+				'req' => [ '!service_heading' => '', 'box_url' => '', '!heading_url' => '']
 			),
 			'heading_alignment' => array(
 				'type' => 'radio',
@@ -6379,22 +6374,21 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_service', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_iconbox', array(
 		'name' => __pl('Icon Box'),
 		'group' => 'other',
-		'func' => 'pagelayer_sc_iconbox',
 		'innerHTML' => 'service_text',
 		'html' => '<div class="pagelayer-service-container pagelayer-service-align-{{service_alignment}} pagelayer-service-vertical-{{service_vertical_alignment}}">
 			<div class="pagelayer-service-icon pagelayer-service-{{service_icon_view}}">
 				<i class="{{service_icon}} pagelayer-icon-{{service_icon_shape_type}} pagelayer-animation-{{anim_hover}}" aria-hidden="true"></i>
 			</div>
 			<div class="pagelayer-service-details">
-				<a if-ext={{heading_url}} href="{{heading_url}}" class="pagelayer-ele-link">
+				<a if-ext={{heading_url}} href="{{{heading_url}}}" class="pagelayer-ele-link">
 					<div if="{{service_heading}}" class="pagelayer-service-heading">{{service_heading}}</div>
 				</a>
 				<div if="{{service_text}}" class="pagelayer-service-text">{{service_text}}</div>
-				<a if="{{service_button}}" href="{{service_button_url}}" class="pagelayer-service-btn pagelayer-button pagelayer-ele-link {{iconbox_button_type}} {{service_button_size}}">
+				<a if="{{service_button}}" href="{{{service_button_url}}}" class="pagelayer-service-btn pagelayer-button pagelayer-ele-link {{iconbox_button_type}} {{service_button_size}}">
 					<span if="{{service_button_text}}">{{service_button_text}}</span>
 				</a>
 			</div>
-			<a if-ext={{box_url}} href="{{box_url}}" class="pagelayer-ele-link pagelayer-box-link"> </a>
+			<a if-ext={{box_url}} href="{{{box_url}}}" class="pagelayer-ele-link pagelayer-box-link"> </a>
 		</div>',
 		'params' => array(
 			'service_icon' => array(
@@ -6440,6 +6434,14 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_iconbox', array(
 				'type' => 'link',
 				'label' => __pl('url'),
 			),
+			'box_target' => array(
+				'label' => __pl('open_link_in_new_window'),
+				'type' => 'checkbox',
+				'addAttr' => ['{{element}} .pagelayer-box-link' => 'target="_blank"'],
+				'req' => array(
+					'!box_url' => ''
+				)
+			),
 		),
 		// icon style
 		'service_icon_style' => [
@@ -6479,6 +6481,40 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_iconbox', array(
 				'label' => __pl('service_icon_spacing'),
 				'screen' => 1,
 				'css' => ['{{element}} .pagelayer-service-icon' => 'padding-top:{{val[0]}}px; padding-right:{{val[1]}}px; padding-bottom:{{val[2]}}px; padding-left:{{val[3]}}px;'],
+			),			
+			'anim_hover' => array(
+				'type' => 'select',
+				'label' => __pl('icon_animation'),
+				'list' => [
+					'' => __pl('none'),
+					'grow' => __pl('Grow'),
+					'shrink' => __pl('Shrink'),
+					'pulse' => __pl('Pulse'),
+					'pulse-grow' => __pl('Pulse Grow'),
+					'pulse-shrink' => __pl('Pulse Shrink'),
+					'push' => __pl('Push'),
+					'pop' => __pl('Pop'),
+					'buzz' => __pl('Buzz'),
+					'buzz-out' => __pl('Buzz Out'),
+					'float' => __pl('Float'),
+					'sink' => __pl('Sink'),
+					'bob' => __pl('Bob'),
+					'hang' => __pl('Hang'),
+					'bounce-in' => __pl('Bounce In'),
+					'bounce-out' => __pl('Bounce Out'),
+					'rotate' => __pl('Rotate'),
+					'grow-rotate' => __pl('Grow Rotate'),
+					'skew-forward' => __pl('Skew Forward'),
+					'skew-backward' => __pl('Skew Backward'),
+					'wobble-vertical' => __pl('Wobble Vertical'),
+					'wobble-horizontal' => __pl('Wobble Horizontal'),
+					'wobble-bottom-to-right' => __pl('Wobble Bottom To Right'),
+					'wobble-top-to-right' => __pl('Wobble Top To Right'),
+					'wobble-top' => __pl('Wobble Top'),
+					'wobble-bottom' => __pl('Wobble Bottom'),
+					'wobble-skew' => __pl('Wobble Skew'),
+				],
+				'addClass' => 'pagelayer-anim-par'
 			),
 			'service_icon_state' => array(
 				'type' => 'radio',
@@ -6533,42 +6569,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_iconbox', array(
 				'default' => 400,
 				'css' => ['{{element}} .pagelayer-service-icon i' => '-webkit-transition: all {{val}}ms; transition: all {{val}}ms;'],
 				'show' => ['service_icon_state' => 'hover'],
-			),
-			'anim_hover' => array(
-				'type' => 'select',
-				'label' => __pl('icon_animation'),
-				'list' => [
-					'' => __pl('none'),
-					'grow' => __pl('Grow'),
-					'shrink' => __pl('Shrink'),
-					'pulse' => __pl('Pulse'),
-					'pulse-grow' => __pl('Pulse Grow'),
-					'pulse-shrink' => __pl('Pulse Shrink'),
-					'push' => __pl('Push'),
-					'pop' => __pl('Pop'),
-					'buzz' => __pl('Buzz'),
-					'buzz-out' => __pl('Buzz Out'),
-					'float' => __pl('Float'),
-					'sink' => __pl('Sink'),
-					'bob' => __pl('Bob'),
-					'hang' => __pl('Hang'),
-					'bounce-in' => __pl('Bounce In'),
-					'bounce-out' => __pl('Bounce Out'),
-					'rotate' => __pl('Rotate'),
-					'grow-rotate' => __pl('Grow Rotate'),
-					'skew-forward' => __pl('Skew Forward'),
-					'skew-backward' => __pl('Skew Backward'),
-					'wobble-vertical' => __pl('Wobble Vertical'),
-					'wobble-horizontal' => __pl('Wobble Horizontal'),
-					'wobble-bottom-to-right' => __pl('Wobble Bottom To Right'),
-					'wobble-top-to-right' => __pl('Wobble Top To Right'),
-					'wobble-top' => __pl('Wobble Top'),
-					'wobble-bottom' => __pl('Wobble Bottom'),
-					'wobble-skew' => __pl('Wobble Skew'),
-				],
-				'show' => array(
-					'service_icon_state' => 'hover',
-				),
 			),
 			'service_icon_color_hover' => array(
 				'type' => 'color',
@@ -6712,7 +6712,13 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_iconbox', array(
 			'heading_url' => array(
 				'type' => 'link',
 				'label' => __pl('url'),
-				'req' => ['!service_heading' => '']
+				'req' => ['!service_heading' => '', 'box_url' => '']
+			),
+			'heading_target' => array(
+				'label' => __pl('open_link_in_new_window'),
+				'type' => 'checkbox',
+				'addAttr' => ['{{element}} .pagelayer-service-details a' => 'target="_blank"'],
+				'req' => [ '!service_heading' => '', 'box_url' => '', '!heading_url' => '']
 			),
 			'heading_alignment' => array(
 				'type' => 'radio',
@@ -7088,7 +7094,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_iconbox', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_tabs', array(
 		'name' => __pl('tabs'),
 		'group' => 'other',
-		'func' => 'pagelayer_sc_tabs',
 		'has_group' => [
 			'section' => 'params', 
 			'prop' => 'elements'
@@ -7281,7 +7286,7 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_tabs', array(
 				'max' => 50,
 				'step' => 1,
 				'screen' => 1,
-				'css' => ['{{element}}.pagelayer-tabs .pagelayer-tabcontainer [pagelayer-id]' => 'padding: {{val}}px;'],
+				'css' => ['{{element}}.pagelayer-tabs .pagelayer-tabcontainer .pagelayer-tab' => 'padding: {{val}}px;'],
 			),
 			'tabs_content_border_width' => array(
 				'type' => 'padding',
@@ -7317,10 +7322,23 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_tab', array(
 		'name' => __pl('tab'),
 		'group' => 'other',
 		'not_visible' => 1,
-		'func' => 'pagelayer_sc_tab',
-		'innerHTML' => 'text',
-		'html' => '<div class="pagelayer-tabcontent">{{text}}</div>',
+		'has_group' => [
+			'section' => 'params', 
+			'prop' => 'elements'
+		],
+		'holder' => '.pagelayer-tabcontent',
+		'html' => '<div class="pagelayer-tabcontent"></div>',
 		'params' => array(
+			'elements' => array(
+				'type' => 'group',
+				'label' => __pl('Inner Row'),
+				'sc' => PAGELAYER_SC_PREFIX.'_inner_row',
+				'count' => 1,
+				'item_label' => array(
+					'default' => __pl('Inner Row'),
+				),
+				'hide' => 1,
+			),
 			'default_active' => array(
 				'type' => 'checkbox',
 				'label' => __pl('Default active tab'),
@@ -7337,13 +7355,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_tab', array(
 				'default' => 'Lorem',
 				'addAttr' => 'pagelayer-tab-title="{{title}}"'
 			),
-			'text' => array(
-				'type' => 'editor',
-				'label' => __pl('Edit Rich Text'),
-				'default' => 'Lorem ipsum dolor sit amet',
-				'desc' => __pl('Edit the content here or edit directly in the Editor'),
-				'edit' => '.pagelayer-tabcontent',
-			),
 		)
 	)
 );
@@ -7352,7 +7363,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_tab', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_accordion', array(
 		'name' => __pl('accordion'),
 		'group' => 'other',
-		'func' => 'pagelayer_sc_accordion',
 		'has_group' => [
 			'section' => 'params', 
 			'prop' => 'elements'
@@ -7433,13 +7443,13 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_accordion', array(
 				'type' => 'color',
 				'label' => __pl('Active Tab Color '),
 				'default' => '#ffffff',
-				'css' => ['{{element}} .pagelayer-accordion-tabs.active' => 'color:{{val}}', '{{element}} .pagelayer-accordion-tabs:hover' => 'color:{{val}}'],
+				'css' => ['{{element}} .active .pagelayer-accordion-tabs' => 'color:{{val}}', '{{element}} .pagelayer-accordion-tabs:hover' => 'color:{{val}}'],
 			),
 			'tabs_active_bg_color' => array(
 				'type' => 'color',
 				'label' => __pl('Active Tab Background Color '),
 				'default' => '#0986c0',
-				'css' => ['{{element}} .pagelayer-accordion-tabs.active'=> 'background-color:{{val}}', '{{element}} .pagelayer-accordion-tabs:hover' => 'background-color:{{val}}'],
+				'css' => ['{{element}} .active .pagelayer-accordion-tabs'=> 'background-color:{{val}}', '{{element}} .pagelayer-accordion-tabs:hover' => 'background-color:{{val}}'],
 			),
 			'tab_padding' => array(
 				'type' => 'slider',
@@ -7529,11 +7539,24 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_accordion_item', array(
 		'name' => __pl('Accordion item'),
 		'group' => 'other',
 		'not_visible' => 1,
-		'func' => 'pagelayer_sc_accordion_item',
-		'innerHTML' => 'text',
+		'has_group' => [
+			'section' => 'params', 
+			'prop' => 'elements'
+		],
+		'holder' => '.pagelayer-accordion-panel',
 		'html' => '<a if="{{title}}" class="pagelayer-accordion-tabs">{{title}}<span class="pagelayer-accordion-icon"><i></i></span></a>
-		<div if="{{text}}" class="pagelayer-accordion-panel">{{text}}</div>',
+		<div class="pagelayer-accordion-panel"></div>',
 		'params' => array(
+			'elements' => array(
+				'type' => 'group',
+				'label' => __pl('Inner Row'),
+				'sc' => PAGELAYER_SC_PREFIX.'_inner_row',
+				'count' => 1,
+				'item_label' => array(
+					'default' => __pl('Inner Row'),
+				),
+				'hide' => 1,
+			),
 			'default_active' => array(
 				'type' => 'checkbox',
 				'label' => __pl('Default active tab'),
@@ -7548,14 +7571,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_accordion_item', array(
 				'type' => 'text',
 				'label' => __pl('title'),
 				'default' => 'Lorem',
-				'desc' => __pl(''),
-			),
-			'text' => array(
-				'type' => 'editor',
-				'label' => __pl('Edit Rich Text'),
-				'default' => 'Lorem ipsum dolor sit amet',
-				'desc' => __pl('Edit the content here or edit directly in the Editor'),
-				'edit' => '.pagelayer-accordion-panel',
 			),
 		)
 	)
@@ -7565,7 +7580,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_accordion_item', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_collapse', array(
 		'name' => __pl('Collapse'),
 		'group' => 'other',
-		'func' => 'pagelayer_sc_collapse',
 		'has_group' => [
 			'section' => 'params', 
 			'prop' => 'elements'
@@ -7647,13 +7661,13 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_collapse', array(
 				'type' => 'color',
 				'label' => __pl('Active Tab Color '),
 				'default' => '#fff',
-				'css' => ['{{element}} .pagelayer-accordion-tabs.active' => 'color:{{val}}', '{{element}} .pagelayer-accordion-tabs:hover' => 'color:{{val}}'],
+				'css' => ['{{element}} .active .pagelayer-accordion-tabs' => 'color:{{val}}', '{{element}} .pagelayer-accordion-tabs:hover' => 'color:{{val}}'],
 			),
 			'tabs_active_bg_color' => array(
 				'type' => 'color',
 				'label' => __pl('Active Tab Background Color '),
 				'default' => '#0986c0',
-				'css' => ['{{element}} .pagelayer-accordion-tabs.active'=> 'background-color:{{val}}', '{{element}} .pagelayer-accordion-tabs:hover' => 'background-color:{{val}}'],
+				'css' => ['{{element}} .active .pagelayer-accordion-tabs'=> 'background-color:{{val}}', '{{element}} .pagelayer-accordion-tabs:hover' => 'background-color:{{val}}'],
 			),
 			'tab_padding' => array(
 				'type' => 'slider',
@@ -7741,7 +7755,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_collapse', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_space', array(
 		'name' => __pl('space'),
 		'group' => 'other',
-		'func' => 'pagelayer_sc_space',
 		'html' => '<div class="pagelayer-space-holder"></div>',
 		'params' => array(
 			'height' => array(
@@ -7763,7 +7776,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_space', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_embed', array(
 		'name' => __pl('embed'),
 		'group' => 'other',
-		'func' => 'pagelayer_sc_embed',
 		'innerHTML' => 'data',
 		'html' => '<div if={{data}} class="pagelayer-embed-container">{{data}}</div>',
 		'params' => array(
@@ -7781,7 +7793,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_embed', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_shortcodes', array(
 		'name' => __pl('shortcodes'),
 		'group' => 'other',
-		'func' => 'pagelayer_sc_shortcodes',
 		'innerHTML' => 'data',
 		'holder' => '.pagelayer-shortcodes-container',
 		'html' => '<div class="pagelayer-shortcodes-container">{{{shortcode}}}</div>',
@@ -7799,7 +7810,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_shortcodes', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_google_maps', array(
 		'name' => __pl('Google Maps'),
 		'group' => 'other',
-		'func' => 'pagelayer_sc_google_maps',
 		'innerHTML' => 'address',
 		'html' => '<div class="pagelayer-google-maps-holder">
 			<iframe marginheight="0" scrolling="no" marginwidth="0" frameborder="0" src="https://maps.google.com/maps?q={{address}}&t=m&z={{zoom}}&output=embed&iwloc=near" aria-label="{{address}}"></iframe>
@@ -7840,16 +7850,15 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_google_maps', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_testimonial', array(
 		'name' => __pl('testimonial'),
 		'group' => 'other',
-		'func' => 'pagelayer_sc_testimonial',
 		'innerHTML' => 'quote_content',
 		'html' => '<div if="{{quote_content}}" class="pagelayer-testimonial-content">{{quote_content}}</div>
 		<div class="pagelayer-testimonial-author-details">
-			<div class="pagelayer-{{image_position}}">
-				<img if="{{avatar}}" class="pagelayer-img pagelayer-testimonial-image pagelayer-testimonial-{{img_shape}}" src="{{func_image}}" />
+			<div if="{{avatar}}" class="pagelayer-{{image_position}}">
+				<img class="pagelayer-img pagelayer-testimonial-image pagelayer-testimonial-{{img_shape}}" src="{{func_image}}" />
 			</div>
 			<div class="pagelayer-{{image_position}}">
 				<div if="{{cite}}" class="pagelayer-testimonial-cite">
-					<a if-ext="{{cite_url}}" class="pagelayer-ele-link" href="{{cite_url}}">
+					<a if-ext="{{cite_url}}" class="pagelayer-ele-link" href="{{{cite_url}}}">
 						<span class="pagelayer-testimonial-author">{{cite}}</span>
 					</a>
 					<span if="{{designation}}" class="pagelayer-testimonial-author-title">
@@ -7904,7 +7913,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_testimonial', array(
 				'type' => 'image',
 				'label' => __pl('testimonial_image_label'),
 				'desc' => __pl('testimonial_image_desc'),
-				'default' => PAGELAYER_URL.'/images/default-image.png',
 			),
 			'testimonial_image_size' => array(
 				'label' => __pl('testimonial_image_sizes'),
@@ -8029,7 +8037,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_testimonial', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_progress', array(
 		'name' => __pl('Progress Bars'),
 		'group' => 'other',
-		'func' => 'pagelayer_sc_progress',
 		'innerHTML' => 'progress_text',
 		'html' =>'<div if="{{title}}" class="pagelayer-progress-title">{{title}}</div>
 			<div if="{{progress_pre_suf}}" class="pagelayer-progress-goal">
@@ -8227,7 +8234,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_progress', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_block', array(
 		'name' => __pl('Color Block'),
 		'group' => 'other',
-		'func' => 'pagelayer_sc_block',
 		'params' => array(
 			'block_color' => array(
 				'type' => 'color',
@@ -8253,7 +8259,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_block', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_alert', array(
 		'name' => __pl('Alert'),
 		'group' => 'other',
-		'func' => 'pagelayer_sc_alert',
 		'innerHTML' => 'alert_content',
 		'html' => '<div class="pagelayer-alert-content">
 				<i if="{{alert_icon}}" class="pagelayer-alert-icon {{alert_icon}}"></i>
@@ -8377,7 +8382,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_alert', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_anchor', array(
 		'name' => __pl('Anchor'),
 		'group' => 'other',
-		'func' => 'pagelayer_sc_anchor',
 		'html' => '<div id="{{title}}" class="pagelayer-anchor-holder"></div>',
 		'params' => array(
 			'title' => array(
@@ -8393,7 +8397,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_anchor', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_stars', array(
 		'name' => __pl('Stars'),
 		'group' => 'other',
-		'func' => 'pagelayer_sc_stars',
 		'html' => '<span if="{{rating_title}}" class="pagelayer-stars-title">{{rating_title}}</span>
 					<div class="pagelayer-stars-container" title="{{number_of_ratings}}/{{number_of_stars}}" pagelayer-stars-value="{{number_of_ratings}}" pagelayer-stars-count="{{number_of_stars}}">					
 					</div>',
@@ -8490,7 +8493,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_stars', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_divider', array(
 		'name' => __pl('Divider'),
 		'group' => 'other',
-		'func' => 'pagelayer_sc_divider',
 		'html' => '<div class="pagelayer-divider-holder">
 			<span class="pagelayer-divider-seperator"></span>
 		</div>',
@@ -8561,7 +8563,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_divider', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_counter', array(
 		'name' => __pl('Counter'),
 		'group' => 'other',
-		'func' => 'pagelayer_sc_counter',
 		'html' => '<div class="pagelayer-counter-holder">
 			<div if="{{counter_start_number}}" class="pagelayer-counter-content">
 				<span if="{{number_prefix}}">{{number_prefix}}</span><span class="pagelayer-counter-display">{{counter_start_number}}</span><span if="{{number_suffix}}">{{number_suffix}}</span>
@@ -8679,7 +8680,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_counter', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_address', array(
 		'name' => __pl('address'),
 		'group' => 'other',
-		'func' => 'pagelayer_sc_address',
 		'icon' => 'fas fa-map-marker-alt',
 		'html' => '<div class="pagelayer-address-holder">
 			<span class="pagelayer-address-icon"><i class="{{icon}}"></i></span>
@@ -8690,6 +8690,7 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_address', array(
 				'type' => 'color',
 				'label' => __pl('color'),
 				'css' => ['{{element}} .pagelayer-address *, {{element}} .pagelayer-address' => 'color:{{val}}'],
+				'desc' => __pl('CMA_desc')
 			),
 			'typography' => array(
 				'type' => 'typography',
@@ -8749,7 +8750,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_address', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_email', array(
 		'name' => __pl('email'),
 		'group' => 'other',
-		'func' => 'pagelayer_sc_email',
 		'icon' => 'fas fa-envelope',
 		'html' => '<div class="pagelayer-email-holder">
 			<span class="pagelayer-email-icon"><i class="{{icon}}"></i></span>
@@ -8761,6 +8761,7 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_email', array(
 			'linked' => array(
 				'type' => 'checkbox',
 				'label' => __pl('make_link'),
+				'desc' => __pl('email_desc')
 			),
 			'color' => array(
 				'type' => 'color',
@@ -8825,7 +8826,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_email', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_phone', array(
 		'name' => __pl('phone'),
 		'group' => 'other',
-		'func' => 'pagelayer_sc_phone',
 		'icon' => 'fas fa-phone-alt',
 		'html' => '<div class="pagelayer-phone-holder">
 			<span class="pagelayer-phone-icon"><i class="{{icon}}"></i></span>
@@ -8837,6 +8837,7 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_phone', array(
 			'linked' => array(
 				'type' => 'checkbox',
 				'label' => __pl('make_link'),
+				'desc' => __pl('CMA_desc')
 			),
 			'color' => array(
 				'type' => 'color',
@@ -8901,7 +8902,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_phone', array(
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_post_props', array(
 		'name' => __pl('Body and Post Props'),
 		'group' => 'other',
-		'func' => 'pagelayer_sc_body',
 		'not_visible' => 1,
 		'overide_css_selector' => 'body',
 		'hide_active' => 1,
@@ -8909,53 +8909,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_post_props', array(
 		'skip_props' => ['ele_zindex',
 						'ele_shadow', 'border_shadow_hover',
 						'hide_desktop',	'hide_tablet', 'hide_mobile'],
-		'params' => array(
-			'post_title' => array(
-				'type' => 'text',
-				'label' => __pl('post_title'),
-				'default' => (empty($post->post_title) ? 'No Title' : $post->post_title),
-			),
-			'post_name' => array(
-				'type' => 'text',
-				'label' => __pl('post_name'),
-				'default' => (empty($post->post_name) ? 'no-slug' : $post->post_name),
-			),
-			'post_status' => array(
-				'type' => 'select',
-				'label' => __pl('post_status'),
-				'list' => [
-					'publish' => __pl('Published'),
-					'draft' => __pl('Draft'),
-				],
-			),
-			'featured_image' => array(
-				'label' => __pl('featured_image'),
-				'desc' => __pl('featured_image_desc'),
-				'type' => 'image',
-				'default' => PAGELAYER_URL.'/images/default-image.png',
-			),
-			'post_excerpt' => array(
-				'type' => 'textarea',
-				'label' => __pl('excerpt'),
-			),
-		),
-		'custom_hf_code' => array(
-			'header_code' => array(
-				'type' => 'textarea',
-				'label' => __pl('header_code'),
-				'rows' => 4,
-				'pro' => 1,
-			),
-			'footer_code' => array(
-				'type' => 'textarea',
-				'label' => __pl('footer_code'),
-				'rows' => 4,
-				'pro' => 1,
-			),
-		),
-		'styles' => array(
-			'custom_hf_code' => __pl('custom_hf_code'),
-		),
 	)			
 );
 
@@ -8983,7 +8936,6 @@ if(!empty($wp_registered_sidebars)){
 pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_wp_widgets', array(
 		'name' => __pl('Sidebars / Widget Area'),
 		'group' => 'wordpress',
-		'func' => 'pagelayer_sc_wp_widgets',
 		'html' => '<div class="pagelayer-wp-sidebar-title">{{title}}</div>
 			<div class="pagelayer-wp-sidebar-holder">{{{data}}}</div>',
 		'params' => array(
@@ -8998,7 +8950,6 @@ pagelayer_add_shortcode(PAGELAYER_SC_PREFIX.'_wp_widgets', array(
 				'type' => 'select',
 				'label' => __pl('wp_widgets_area_select'),
 				'default' => $pagelayer_wp_widget_default,
-				'desc' => '',
 				'list' => $pagelayer_wp_widgets
 			)
 		)
@@ -9035,5 +8986,6 @@ foreach($GLOBALS['wp_widget_factory']->widgets as $widget_key => $widget){
 
 // Its premium
 if(defined('PAGELAYER_PREMIUM')){
+	include_once(dirname(__FILE__).'/freemium.php');
 	include_once(dirname(__FILE__).'/premium.php');
 }

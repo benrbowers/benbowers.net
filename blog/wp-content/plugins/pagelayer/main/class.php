@@ -77,7 +77,18 @@ class PageLayer{
 		// Load the langs
 		$this->l = @file_get_contents(PAGELAYER_DIR.'/languages/en.json');
 		$this->l = @json_decode($this->l, true);
-
+		
+		// Add after plugins_loaded
+		add_action('plugins_loaded', [ $this, 'load_extra_languages' ], 11);
+	}
+	
+	function load_extra_languages(){
+		
+		if(defined('SITEPAD')){
+			$this->l['email_desc'] = 'To change the email, visit your '.BRAND_SM.' Dashboard -> Settings -> Editor Settings';
+			$this->l['CMA_desc'] = 'To change text, visit your '.BRAND_SM.' Dashboard -> Settings -> Editor Settings';
+		}
+		
 	}
 
 }

@@ -7,7 +7,7 @@
  * @package pQuery
  */
 
-namespace pQuery;
+namespace pagelayerQuery;
 
 /**
  * Indents text

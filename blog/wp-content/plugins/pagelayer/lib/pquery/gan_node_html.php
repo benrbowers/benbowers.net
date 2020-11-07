@@ -7,7 +7,7 @@
  * @package pQuery
  */
 
-namespace pQuery;
+namespace pagelayerQuery;
 
 /**
  * Holds (x)html/xml tag information like tag name, attributes,
@@ -65,14 +65,14 @@ class DomNode implements IQuery {
 	 * @var string
 	 * @see select()
 	 */
-	var $selectClass = 'pQuery\\HtmlSelector';
+	var $selectClass = 'pagelayerQuery\\HtmlSelector';
 	/**
 	 * Name of the parser class
 	 * @var string
 	 * @see setOuterText()
 	 * @see setInnerText()
 	 */
-	var $parserClass = 'pQuery\\Html5Parser';
+	var $parserClass = 'pagelayerQuery\\Html5Parser';
 
 	/**
 	 * Name of the class used for {@link addChild()}
@@ -83,37 +83,37 @@ class DomNode implements IQuery {
 	 * Name of the class used for {@link addText()}
 	 * @var string
 	 */
-	var $childClass_Text = 'pQuery\\TextNode';
+	var $childClass_Text = 'pagelayerQuery\\TextNode';
 	/**
 	 * Name of the class used for {@link addComment()}
 	 * @var string
 	 */
-	var $childClass_Comment = 'pQuery\\CommentNode';
+	var $childClass_Comment = 'pagelayerQuery\\CommentNode';
 	/**
 	 * Name of the class used for {@link addContional()}
 	 * @var string
 	 */
-	var $childClass_Conditional = 'pQuery\\ConditionalTagNode';
+	var $childClass_Conditional = 'pagelayerQuery\\ConditionalTagNode';
 	/**
 	 * Name of the class used for {@link addCDATA()}
 	 * @var string
 	 */
-	var $childClass_CDATA = 'pQuery\\CdataNode';
+	var $childClass_CDATA = 'pagelayerQuery\\CdataNode';
 	/**
 	 * Name of the class used for {@link addDoctype()}
 	 * @var string
 	 */
-	var $childClass_Doctype = 'pQuery\\DoctypeNode';
+	var $childClass_Doctype = 'pagelayerQuery\\DoctypeNode';
 	/**
 	 * Name of the class used for {@link addXML()}
 	 * @var string
 	 */
-	var $childClass_XML = 'pQuery\\XmlNode';
+	var $childClass_XML = 'pagelayerQuery\\XmlNode';
 	/**
 	 * Name of the class used for {@link addASP()}
 	 * @var string
 	 */
-	var $childClass_ASP = 'pQuery\\AspEmbeddedNode';
+	var $childClass_ASP = 'pagelayerQuery\\AspEmbeddedNode';
 
 	/**
 	 * Parent node, null if none
@@ -1923,7 +1923,7 @@ class DomNode implements IQuery {
      */
     public function query($query = '*') {
         $select = $this->select($query);
-        $result = new \pQuery((array)$select);
+        $result = new \pagelayerQuery((array)$select);
         return $result;
     }
 

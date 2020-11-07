@@ -36,12 +36,17 @@ global $post, $pagelayer;
 	foreach($icons as $icon){
 		$icons_list[] = $icon.'.min.css';
 	}
-
+	
+	$css_url = admin_url('admin-ajax.php?action=pagelayer_givecss&pagelayer_nonce=1&');
+	if(pagelayer_enable_giver()){
+		$css_url = PAGELAYER_CSS.'/givecss.php?';
+	}
+	
 	echo '
 <html>
 <head>
 	<link href="https://fonts.googleapis.com/css?family=Roboto&display=swap" rel="stylesheet"> 
-	<link rel="stylesheet" href="'.PAGELAYER_CSS.'/givecss.php?give=pagelayer-editor.css,trumbowyg.min.css,pagelayer-icons.css,'.implode(',' ,$icons_list).'&ver='.PAGELAYER_VERSION.'">';
+	<link rel="stylesheet" href="'.$css_url.'give=pagelayer-editor.css,trumbowyg.min.css,pagelayer-icons.css,'.implode(',' ,$icons_list).'&ver='.PAGELAYER_VERSION.'">';
 	
 	do_action('pagelayer_live_body_head');
 	
@@ -50,9 +55,33 @@ global $post, $pagelayer;
 	$brand = str_split($brand);
 	
 	echo '
+<style>
+/*Set responsive variables*/
+.pagelayer-screen-tablet{
+width: '. $pagelayer->settings['tablet_breakpoint'] .'px;
+}
+.pagelayer-screen-mobile{
+width: '. $pagelayer->settings['mobile_breakpoint'] .'px;
+}
+.pagelayer-errorBox-support{
+text-decoration:none;
+}
+</style>
 </head>
 
 <body class="pagelayer-normalize pagelayer-body">
+<div class="pagelayer-errorBox">
+	<div class="pagelayer-errorBox-close"><i class="fas fa-times"></i></div>
+	<div class="pagelayer-errorBox-main">
+		<h2><i class="fas fa-times"></i>'.__pl('error').'</h2>
+		<div class="pagelayer-errorBox-content"></div>
+	</div>
+	<div class="pagelayer-errorBox-resolve">
+		<p>'.__pl('error_submitting').'</p>
+		<button type="button" class="pagelayer-errorBox-copy" onclick="pagelayer_copy_error(event)">'.__pl('copy').'</button>
+		<a type="button" class="pagelayer-errorBox-support"  href="'. (defined('SITEPAD') ? 'http://sitepad.deskuss.com' : 'http://pagelayer.deskuss.com' ) .'" target="_bank">'.__pl('support').'</a>
+	</div>
+</div>
 <div id="pagelayer-loader-wrapper">
 	<div class="pagelayer-animation-section">
 		<div class="pagelayer-loader">
@@ -116,6 +145,17 @@ echo '
 </tr>
 </table>
 
+<div class="pagelayer-pro-notice">';
+	pagelayer_show_pro_div('Premium Feature<span class="pli pli-cross pagelayer-pro-x"></span>', '', 0);
+echo '</div>
+<div class="pagelayer-editor-notice"></div>
+<div class="pagelayer-props-modal">
+	<div class="pagelayer-props-holder">
+		<div class="pagelayer-props-wrap">
+			<i class="pagelayer-props-modal-close pli pli-cross" aria-hidden="true"></i>
+		</div>
+	</div>
+</div>
 <script>
 var pagelayer_iframe_cw = document.getElementById("pagelayer-iframe").contentWindow;
 
@@ -133,6 +173,18 @@ function loader(ran) {
 		}, 50);
 }
 loader(90);
+
+// ErrorBox content copy function
+function pagelayer_copy_error(){
+	var tempInput = document.createElement("textarea");
+	tempInput.value = document.querySelector(".pagelayer-errorBox-content").innerText;
+	document.body.appendChild(tempInput);
+	tempInput.select();
+	document.execCommand("copy");
+	document.body.removeChild(tempInput);
+	alert("'.__pl('copy_success').'");
+}
+
 </script>
 </body>';
 

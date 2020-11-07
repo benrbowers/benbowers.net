@@ -19,9 +19,14 @@
 //===========================================================
 //////////////////////////////////////////////////////////////
 
+if(!empty($_REQUEST['test'])){
+	echo 1;
+	die();
+}
 
 // Read the file
 $data = '';
+$data_premium = '';
 $self_path = dirname(__FILE__);
 $files = array(
 		// Admin JS
@@ -55,6 +60,9 @@ $files = array(
 // What files to give		
 $give = @$_REQUEST['give'];
 
+// Premium
+$premium = @$_REQUEST['premium'];
+
 if(!empty($give)){
 	
 	$give = explode(',', $give);
@@ -68,6 +76,18 @@ if(!empty($give)){
 	
 }
 
+if(!empty($premium)){
+	
+	$premium = explode(',', trim($premium, ','));
+	
+	// Check all files are in the supported list
+	foreach($premium as $file){
+		if(in_array($file, $files)){
+			$final_premium[md5($file)] = $file;
+		}
+	}
+	
+}
 
 // Give all
 if(empty($final)){
@@ -77,6 +97,15 @@ if(empty($final)){
 foreach($final as $k => $v){
 	//echo $k.'<br>';
 	$data .= file_get_contents($self_path.'/'.$v)."\n\n";
+}
+
+if(!empty($final_premium)){
+
+	foreach($final_premium as $k => $v){
+		//echo $k.'<br>';
+		$data_premium .= file_get_contents($self_path.'/'.$v)."\n\n";
+	}
+
 }
 
 // We are zipping if possible
@@ -99,10 +128,15 @@ if(!empty($pagelayer->shortcodes)){
 
 // Add the langs as well
 preg_match_all('/pagelayer_l\([\'"](\w*)[\'"]\)/is', $data, $matches);
-if(!empty($matches[1])){
+if(!empty($matches[1]) && function_exists('__pl')){
 	foreach($matches[1] as $lk => $lv){
 		$export_langs[$lv] = __pl($lv);
 	}
+}
+
+// Also add the fonts
+if(!empty($pagelayer->fonts)){
+	$export_langs['google_fonts_list'] = $pagelayer->fonts;
 }
 
 // And lang string ?
@@ -129,5 +163,13 @@ if (isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) && (@strtotime($_SERVER['HTTP_IF_M
 }
 
 echo $data;
+echo $data_premium;
+
+// Write if we are front-end only then
+$dev = dirname(dirname(__FILE__)).'/dev.php';
+if(!empty($_REQUEST['write']) && file_exists($dev)){
+	include_once($dev);
+	write_js();
+}
 
 

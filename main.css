@@ -17,6 +17,7 @@ body {
     text-align: center;
 }
 .header h1 {
+    pointer-events: none;
     margin: 0px;
     font-size: 128px;
     font-weight: 100;

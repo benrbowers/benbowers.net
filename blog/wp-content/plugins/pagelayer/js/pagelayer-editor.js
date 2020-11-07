@@ -9,6 +9,7 @@ pagelayer = {
 	$$ : function(select){
 		return jQuery(select, window.parent.document);
 	},
+	gDocument : jQuery(window.parent.document).add(document),
 	p : this,
 	copy_selected: '',
 	mouse: {x: -1, y: -1},
@@ -17,35 +18,52 @@ pagelayer = {
 	history_lastTime : new Date(),
 	props_ref : {},
 	pro_txt : '',
+	loaded : 0,
 }
 
 var pagelayer_history_obj = {}, pagelayer_revision_obj = {};
 var pagelayer_add_section_data = {};
 
+// Console error manager
+window.onerror = function (msg, url, lineNo, columnNo, error) {
+	var string = msg.toLowerCase();
+	var substring = "script error";
+	
+	if(pagelayer.loaded > 0){
+		return;
+	}
+	
+	if (string.indexOf(substring) > -1){
+		return;
+	}
 
-/*window.onerror = function (msg, url, lineNo, columnNo, error) {
-  var string = msg.toLowerCase();
-  var substring = "script error";
-  if (string.indexOf(substring) > -1){
-    alert("Script Error: See browser console for details");
-  } else {
-    var message = [
-      "Message: " + msg,
-      "URL: " + url,
-      "Line: " + lineNo,
-      "Column: "+ columnNo,
-      "Error object: " + JSON.stringify(error)
-    ].join('\n');
+	if(url.indexOf('pagelayer')=== -1){
+		return;
+	}
 
-    console.log(message);
-    alert("Script Error: See browser console for details");
-  }
+	var message = [
+		"Message: " + msg,
+		"\r\n<br>URL: " + url,
+		"\r\n<br>Line: " + lineNo,
+		"\r\n<br>Column: "+ columnNo,
+		"\r\n<br>Error object: " + error
+	].join('\n');
+	//alert("Script Error: See browser console for details");
 
-  return false;
-};*/
+	pagelayer.$$('.pagelayer-errorBox-content').html(message);
+	pagelayer.$$('.pagelayer-errorBox-close').on('click', function(){	
+		pagelayer.$$('.pagelayer-errorBox').fadeOut();
+	});
+	pagelayer.$$('.pagelayer-errorBox').fadeIn();
+	
+	return false;
+};
 
 // Lets start
 jQuery(document).ready(function(){
+	
+	// Prevent the click Insite editor
+	pagelayer_prevent_click();
 	
 	// Set the title of the parent window
 	try{ pagelayer.$$('head').append(pagelayer.$('title')[0].outerHTML); }catch(e){};
@@ -83,6 +101,9 @@ jQuery(document).ready(function(){
 	// Set to desktop
 	pagelayer_set_screen_mode('desktop');
 	
+	// Create list of fonts
+	pagelayer_fonts = pagelayer_l('google_fonts_list');
+	
 	// Set up right click
 	pagelayer_left_click();
 	pagelayer_right_click();
@@ -114,13 +135,53 @@ jQuery(document).ready(function(){
 	pagelayer_set_row_option_position();
 	
 	// Just the txt
-	pagelayer.pro_txt = 'This feature is a part of <a href="'+pagelayer_pro_url+'" target="_blank">Pagelayer Pro</a>. You will need purchase <a href="'+pagelayer_pro_url+'" target="_blank">Pagelayer Pro</a> to use this feature.';
+	pagelayer.pro_txt = pagelayer_pro_txt;
 	
 	// Hide the loader
 	pagelayer_loader_hide();  
 	
 });
 
+// Prevent the click Insite editor
+function pagelayer_prevent_click(){
+	jQuery(document).on('submit', function(event){
+		var target = jQuery(event.target);
+		if (target.closest(pagelayer_editable).length < 1) {
+			event.preventDefault();
+		}
+	});
+	
+	jQuery(document).on('click', function(event){
+		var target = jQuery(event.target);
+		if (target.closest('a').length > 0 && target.closest(pagelayer_editable).length < 1) {
+			event.preventDefault()
+		}
+	});
+}
+
+// Do pagelayer Dirty
+function pagelayer_do_dirty(){
+	
+	pagelayer_isDirty = true;
+	
+	if (!window.onbeforeunload) {
+		window.onbeforeunload = function(){
+			return true;
+		};
+	}
+	
+}
+
+function pagelayer_do_undirty(){
+
+	pagelayer_isDirty = false;
+	
+	if (window.onbeforeunload) {
+		window.onbeforeunload = null;
+	}
+	
+}
+	
 // Executes when pagelayer is fully loaded
 function pagelayer_loader_hide(){
 	var inner = pagelayer.$$('.pagelayer-percent');
@@ -135,10 +196,11 @@ function pagelayer_loader_hide(){
 			var loaderWrapper = pagelayer.$$('#pagelayer-loader-wrapper');	
 			loaderWrapper.addClass('pagelayer-loaded');
 			loaderWrapper.animate({opacity:0}, function(){
-				loaderWrapper.remove();			
+				loaderWrapper.remove();
 			});
 		}
 	}, 1);
+	pagelayer.loaded = 1;
 }
 
 // Set row-option top zero(0) of the first row
@@ -247,7 +309,6 @@ function pagelayer_make_leftbar_movable(){
 		
 		// The variable needs to be empty.
 		var newMethod = '',
-		par_doc = jQuery(window.parent.document).add(document),
 		change = true;
 		
 		var leftbar_mousemove = function(e){
@@ -302,8 +363,8 @@ function pagelayer_make_leftbar_movable(){
 		var leftbar_mouseup = function(e){
 			
 			// Remove events
-			par_doc.off('mousemove', leftbar_mousemove);
-			par_doc.off('mouseup', leftbar_mouseup);
+			pagelayer.gDocument.off('mousemove', leftbar_mousemove);
+			pagelayer.gDocument.off('mouseup', leftbar_mouseup);
 			
 			// Remove class to leftbar			
 			pagelayer.$$('.pagelayer-leftbar-move').remove();
@@ -328,8 +389,8 @@ function pagelayer_make_leftbar_movable(){
 			change = true;
 		};
 		
-		par_doc.on('mouseup', leftbar_mouseup);
-		par_doc.on('mousemove', leftbar_mousemove);
+		pagelayer.gDocument.on('mouseup', leftbar_mouseup);
+		pagelayer.gDocument.on('mousemove', leftbar_mousemove);
 
 	});
 	
@@ -489,6 +550,13 @@ function pagelayer_setup_drag(){
 			// For every other element, we can be over a col or ele
 			}else{
 				onWrap = jQuery(ele).closest('.pagelayer-wrap-ele,.pagelayer-wrap-col,.pagelayer-wrap-inner-row');
+				
+				// If we are inside the same widget tag
+				// We are allowing for now, hence the following is commented
+				/*var sameTag = onWrap.closest(pagelayer_editable +' [pagelayer-tag="'+tag+'"]');
+				if(sameTag.length > 0){
+					onWrap = sameTag.closest('.pagelayer-wrap-ele');
+				}*/
 			}
 			//console.log(onWrap);
 			
@@ -518,17 +586,26 @@ function pagelayer_setup_drag(){
 			}*/
 					
 			// Get the ID
-			var onId = onWrap.attr('pagelayer-wrap-id');
-			var onEle = onWrap.children('.pagelayer-ele');
+			var onId = pagelayer_id(onWrap);
+			var onEle = pagelayer_ele_by_id(onId);
 			
 			// Do we have a parent ?
-			var pOnId = pagelayer_get_parent(onEle);
-			
-			if(pOnId){
+			var have_parent = function(Ele){
+				var pOnId = pagelayer_get_parent(Ele);
+						
+				if(pagelayer_empty(pOnId) || tag == 'pl_col'){
+					return;
+				}
+				
 				onId = pOnId;
-				onEle = pagelayer_ele_by_id(onId);
-				onWrap = pagelayer_wrap_by_id(onId);
+				onEle = pagelayer_ele_by_id(pOnId);
+				onWrap = pagelayer_wrap_by_id(pOnId);
+				have_parent(onEle);
+				
 			}
+			
+			// Do we have a parent ?
+			have_parent(onEle);
 			
 			var changed = false;
 			
@@ -756,7 +833,7 @@ function pagelayer_setup_drag(){
 						'after_loc' : {'method' : method, 'cEle' : onWrap}
 					});
 					
-					pagelayer_isDirty = true;
+					pagelayer_do_dirty();
 				}
 				
 				// Defining the variables as needed
@@ -1138,6 +1215,13 @@ function pagelayer_element_add_child(pEle, sc){
 	
 	pagelayer_element_setup('[pagelayer-id='+cid+']', true);
 	
+  // Certain element have editable areas which are inner rows. For UX we need to add columns for the users
+	if(sc == 'pl_inner_row'){
+		var col = jQuery('<div pagelayer-tag="pl_col"></div>');
+		jQuery('[pagelayer-id="'+id+'"]').find('.pagelayer-row-holder').append(col);
+		cid = pagelayer_onadd(col, false);
+	}
+	
 	// Do we have to create children ?
 	if('has_group' in pagelayer_shortcodes[sc]){
 				
@@ -1403,7 +1487,7 @@ function pagelayer_element_setup(selector, render){
 // Unsetup element for restup
 function pagelayer_element_unsetup(selector, id){
 	
-	id = id || pagelayer_randstr(16);
+	id = id || false;
 	
 	var src = jQuery(selector);
 	var html = src[0].outerHTML;
@@ -1424,7 +1508,9 @@ function pagelayer_element_unsetup(selector, id){
 	});
 	
 	// Assign id
-	jEle.attr('pagelayer-id', id);
+	if(id){
+		jEle.attr('pagelayer-id', id);
+	}
 	
 	return jEle;
 }
@@ -1621,7 +1707,7 @@ function pagelayer_get_screen_mode(){
 }
 
 // Handle key press events
-jQuery(window.parent.document).add(document).keydown(function(event){
+pagelayer.gDocument.keydown(function(event){
 	//alert(String.fromCharCode(event.which));
 	
 	var tEle = jQuery(event.target);
@@ -1666,10 +1752,23 @@ jQuery(window.parent.document).add(document).keydown(function(event){
 
 // Handle Copy of content
 jQuery(document).on('copy', function(copyEvent){
+		
+	// Is Selected string?
+	var selectedText = "";
+	if (window.getSelection){ // all modern browsers and IE9+
+		selectedText = window.getSelection().toString();
+	}
 	
-	// Check the active element
+	if(selectedText.length > 0){
+		return;
+	}
+	
 	if(pagelayer_active.el && pagelayer_active.el.id){
-						
+		
+		// Do empty clipbord data 
+		(copyEvent.originalEvent || copyEvent).clipboardData.setData('text/plain', '');
+		copyEvent.preventDefault();
+		
 		// Save the active element id
 		pagelayer_copy_select("[pagelayer-id='"+pagelayer_active.el.id+"']");
 		
@@ -1679,14 +1778,23 @@ jQuery(document).on('copy', function(copyEvent){
 
 // Handle Paste in the editor
 jQuery(document).on('paste', function(pasteEvent){
-	
+
 	var pEle_target = jQuery((pasteEvent.originalEvent || pasteEvent).target);
+	var tag = pagelayer_tag(pEle_target.closest('[pagelayer-id]'));
+	var clipboardData = (pasteEvent.originalEvent || pasteEvent).clipboardData;
+	var items = clipboardData.items;
+
 	var pagelayer_ajax_func = {};
 	var contenteditable = false;
-	
-	if(pEle_target.closest('[contenteditable]').length > 0 || pEle_target.is('input, textarea')){
+	var pasteWidget = false;
+
+	if( !pagelayer_empty(tag) && tag == 'pl_text' && (pEle_target.closest('[contenteditable]').length > 0 || pEle_target.is('input, textarea')) ){
 		pEle_target = pEle_target.closest('[contenteditable]');
 		contenteditable = true;
+	}
+	
+	if( items.length < 1 || (items.length == 1 && pagelayer_empty(clipboardData.getData(items[0].type))) ){
+		pasteWidget = true;
 	}
 	
 	// This function for ajax before send call back
@@ -1697,6 +1805,7 @@ jQuery(document).on('paste', function(pasteEvent){
 		
 			// If we dont have an active element then return false and stop ajax
 			if( !(pagelayer_active.el && pagelayer_active.el.id) ){
+				pagelayer_show_msg(pagelayer_l('active_ele_paste_msg'));
 				return false;
 			}
 							
@@ -1726,7 +1835,7 @@ jQuery(document).on('paste', function(pasteEvent){
 			}else{
 				
 				if(pagelayer_empty(pagelayer_active.el) || pagelayer_empty(pagelayer_active.el.id)){
-					console.log("Active element not found while pasting image !");
+					pagelayer_show_msg('active_ele_paste_msg');
 					return;
 				}
 				
@@ -1734,20 +1843,53 @@ jQuery(document).on('paste', function(pasteEvent){
 				// We need to empty pagelayer.copy_selected
 				pagelayer.copy_selected = '';
 				
-				// Prevent to add action history
-				pagelayer.history_action = false;
-	
-				// Create image html
-				var html = jQuery( pagelayer_create_sc('pl_image') );
-				html.attr('pagelayer-a-id', obj['data']['id']);
-				html.attr('pagelayer-tmp-id-url', obj['data']['url']);
+				var pasteAfter = function(){
+					
+					// Prevent to add action history
+					pagelayer.history_action = false;
+					
+					// Create image html
+					var html = pagelayer_create_sc('pl_image');
+					
+					pagelayer_set_atts(html, 'id', obj['data']['id']);
+					pagelayer_set_tmp_atts(html, 'id-url', obj['data']['url']);
+					
+					// Allow to add action history
+					pagelayer.history_action = true;
+		
+					// Copy the element
+					var id = pagelayer_copy_element(html, fTo);
+					jQuery('[pagelayer-id="'+id+'"]').click();
+					
+				};
 				
-				// Allow to add action history
-				pagelayer.history_action = true;
-	
-				// Copy the element
-				var id = pagelayer_copy_element(html, fTo);
-				jQuery('[pagelayer-id="'+id+'"]').click();
+				var replaceURL = function(){
+					
+					// Finding widget image setting using id of jEle. Finding image editor setting from all of the other settings.
+					var row = pagelayer.$$('[pagelayer-element-id='+pagelayer_active.el.id+']').find('.pagelayer-elp-image').eq(0).parent().parent();
+					
+					row.find('.pagelayer-elp-image').css('background-image', 'url(\''+obj['data']['url']+'\')');
+					
+					// To remove past temp attr so that they are not involve in future temp values
+					_pagelayer_clear_tmp_atts(row);
+					
+					for(var x in obj['data']['sizes']){
+						_pagelayer_set_tmp_atts(row, x+'-url', obj['data']['sizes'][x]['url']);
+					}
+										
+					// Save and render
+					_pagelayer_set_tmp_atts(row, 'url', obj['data']['url']);
+					_pagelayer_set_atts(row, obj['data']['id']);
+				};
+				
+				// Image paste confirmation.
+				if(!pagelayer_empty(pagelayer_active.el.tag) && pagelayer_active.el.tag == 'pl_image'){
+					
+					pagelayer_confirmation_box(pagelayer_l('img_paste_conf'), replaceURL, pasteAfter, pagelayer_l('replace_img'), pagelayer_l('paste_after'));
+					
+				}else{
+					pasteAfter();
+				}
 			}
 		
 		// Some error occured	
@@ -1764,7 +1906,7 @@ jQuery(document).on('paste', function(pasteEvent){
 	
 	var findImg = pagelayer_editable_paste_handler(pasteEvent, pagelayer_ajax_func);
 	
-	if(pagelayer_empty(findImg) && pagelayer_empty(contenteditable)){
+	if(pagelayer_empty(findImg) && pagelayer_empty(contenteditable) || pasteWidget){
 		
 		// Check the active element
 		if(pagelayer_active.el && pagelayer_active.el.id){
@@ -1772,10 +1914,10 @@ jQuery(document).on('paste', function(pasteEvent){
 			var jEle = jQuery("[pagelayer-id='"+pagelayer_active.el.id+"']");
 									
 			// Check if the any element is copied
-			if(pagelayer_can_copy_to(jEle)){
-				pagelayer_paste_element("[pagelayer-id='"+pagelayer_active.el.id+"']");
-			}
+			pagelayer_paste_element("[pagelayer-id='"+pagelayer_active.el.id+"']");
 			
+		}else{
+			pagelayer_show_msg(pagelayer_l('no_active_ele_paste'));
 		}
 	}
 });
@@ -1831,7 +1973,7 @@ function pagelayer_delete_element(selector){
 		
 	}
 	
-	pagelayer_isDirty = true;
+	pagelayer_do_dirty();
 };
 
 // Select an element
@@ -1843,6 +1985,8 @@ function pagelayer_copy_select(selector){
 	localStorage.setItem("pagelayer_ele", eHtml);
 	
 	pagelayer.copy_selected = selector;
+	
+	pagelayer_show_msg( pagelayer_l('copied_msg'));
 }
 
 function pagelayer_can_copy_to(to){
@@ -1893,7 +2037,10 @@ function pagelayer_paste_element(to){
 	
 	if(!pagelayer_empty(pagelayer.copy_selected)){
 		pagelayer_copy_element(pagelayer.copy_selected, fTo);
+		return true;
 	}
+	
+	pagelayer_show_msg(pagelayer_l('no_copied'));
 	
 	return false;
 	
@@ -1924,6 +2071,10 @@ function pagelayer_copy_element(selector, insertAfter){
 	
 	pagelayer_element_setup('[pagelayer-id='+id+'], [pagelayer-id='+id+'] .pagelayer-ele', true);
 	
+	if(pagelayer_is_group(tag)){
+		pagelayer_sc_render(jEle);
+	}
+	
 	// Save this element in history action
 	if(pagelayer.history_action){
 		var cEle = pagelayer_near_by_ele(id, tag);
@@ -1942,7 +2093,7 @@ function pagelayer_copy_element(selector, insertAfter){
 		pagelayer_renumber_col(row);
 	}
 	
-	pagelayer_isDirty = true;
+	pagelayer_do_dirty();
 	
 	return id;
 };
@@ -2036,7 +2187,6 @@ function pagelayer_save_sections(sel, section = 'section'){
 			jData['post_id'] = post_id;
 			jData['title'] = title; // TODO : create modal to input title
 			jData['$'] = jEle;
-			jData['tag'] = pagelayer_tag(jEle);
 			jData['is_dirty'] = true;
 			
 			// Add the array in global widgets array
@@ -2085,9 +2235,10 @@ function pagelayer_generate_sc_global_widget(){
 		global_widgets[y]['type'] = 'global_widget';
 		
 		var content = pagelayer_generate_sc(jQuery(cWidget.$), true);
+		var tag = pagelayer_tag(jQuery(cWidget.$));
 		
 		// IF is group then need to remove pagelayer id, 
-		if(pagelayer_is_group(cWidget['tag'])){
+		if(!pagelayer_empty(tag) && pagelayer_is_group(tag)){
 			content = content.replace(/pagelayer-id="(.*?)"/g, "");
 		}
 		
@@ -2376,8 +2527,23 @@ function pagelayer_set_atts(jEle, atts, val){
 					no_val[x] = 1;
 				}
 				
-				if('req' in props[x] || 'show' in props[x]){
+				if('req' in props[x] || 'show' in props[x]){					
 					var show = 'req' in props[x] ? props[x]['req'] : props[x]['show'];
+					
+					// We have both req and show, so lets just combine the values and then show
+					// NOTE : We need to make an array and not just merge the 2 as they are references
+					if('req' in props[x] && 'show' in props[x]){
+						
+						// Add the req values
+						show = JSON.parse(JSON.stringify(props[x]['req']));
+						
+						// Now the show values need to be looped
+						for(var t in props[x]['show']){
+							show[t] = props[x]['show'][t];
+						}
+						
+					}
+					
 					for(var showParam in show){
 						var val = show[showParam];
 						var except = showParam.substr(0, 1) == '!' ? true : false;
@@ -2461,7 +2627,7 @@ function pagelayer_set_atts(jEle, atts, val){
 		pagelayer_elpd_show_rows();
 	}
 	
-	pagelayer_isDirty = true;
+	pagelayer_do_dirty();
 };
 
 // This function will just set atts and not do anything else
@@ -2810,6 +2976,13 @@ function pagelayer_sc_render(jEle){
 	
 	// If there is an HTML, then process it
 	if('html' in pagelayer_shortcodes[el.tag]){
+	
+		// Is there a function to render ?
+		var fn = window['pagelayer_render_'+jEle.attr('pagelayer-tag')];
+		
+		if(typeof fn == 'function'){
+			fn(el);
+		}
 		
 		el.iHTML = jQuery('<div>'+pagelayer_shortcodes[el.tag]['html']+'</div>');
 		
@@ -2840,13 +3013,6 @@ function pagelayer_sc_render(jEle){
 			}
 			
 		});
-	
-		// Is there a function to render ?
-		var fn = window['pagelayer_render_'+jEle.attr('pagelayer-tag')];
-		
-		if(typeof fn == 'function'){
-			fn(el);
-		}
 		
 		//console.log(el.atts);
 		
@@ -3009,8 +3175,9 @@ function pagelayer_sc_render(jEle){
 		// CSS Selector overide
 		if(!pagelayer_empty(all_props['overide_css_selector'])){
 			for(var r in rules){
-				rules[r] = rules[r].split(el.CSS.sel).join(all_props['overide_css_selector']);
-				rules[r] = rules[r].split(el.CSS.wrap).join(all_props['overide_css_selector']);
+				var overide_css_selector = pagelayer_parse_el_vars(all_props['overide_css_selector'], el);
+				rules[r] = rules[r].split(el.CSS.sel).join(overide_css_selector);
+				rules[r] = rules[r].split(el.CSS.wrap).join(overide_css_selector);
 			}
 		}
 		
@@ -3037,7 +3204,7 @@ function pagelayer_sc_render(jEle){
 		pagelayer_sc_render(pagelayer_ele_by_id(par));
 	}
 	
-  // Render End trigger
+	// Render End trigger
 	pagelayer_trigger_action('pagelayer_sc_render_end', [el]);
 		
 	var gEle = pagelayer_ele_by_id(eleId);
@@ -3111,7 +3278,7 @@ function pagelayer_get_contact_templates(){
 function pagelayer_save(){
 	
 	// hiding and showing loading animation	
-  pagelayer.$$('.pagelayer-update-text').hide();
+	pagelayer.$$('.pagelayer-update-text').hide();
 	pagelayer.$$('.pagelayer-update-loader').show();
   
 	pagelayer_trigger_action('pagelayer_save');
@@ -3119,14 +3286,6 @@ function pagelayer_save(){
 	var pagelayerajaxurl = pagelayer_ajax_url+'&action=pagelayer_save_content&postID='+pagelayer_postID;
 	var post = pagelayer_generate_sc(pagelayer_editable);//alert(post);return;
 	
-	// Do we have page properties ?
-	var jEle = jQuery(pagelayer_editable+' [pagelayer-tag=pl_post_props]');
-	var props = {};
-	if(jEle.length > 0){
-		var tmp = pagelayer_data(jEle);
-		//console.log(props);
-		props = tmp.atts;
-	}
 	
 	// Do we have contact templates ?
 	var contacts_props = pagelayer_get_contact_templates();
@@ -3144,9 +3303,9 @@ function pagelayer_save(){
 		data: { 
 			pagelayer_update_content : post,
 			pagelayer_nonce: pagelayer_ajax_nonce,
-			page_props: props,
 			global_widgets: global_data,
-			contacts: contacts_props
+			contacts: contacts_props,
+			copyright: pagelayer_copyright
 		},
 		success: function(response, status, xhr){
 			//alert(data);
@@ -3155,7 +3314,7 @@ function pagelayer_save(){
 			if(obj['error']){
 				alert(obj['error']);
 			}else{
-				pagelayer_isDirty = false;
+				pagelayer_do_undirty();
 				alert(obj['success']);
 				pagelayer_get_revision();
 			}
@@ -3184,7 +3343,16 @@ function pagelayer_close(){
 	}
 };
 
-// Generate Shortcode Post to save
+function pagelayer_serializeAttributes(attributes) {
+  return JSON.stringify(attributes) // Don't break HTML comments.
+  .replace(/--/g, "\\u002d\\u002d") // Don't break non-standard-compliant tools.
+  .replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026") // Bypass server stripslashes behavior which would unescape stringify's
+  // escaping of quotation mark.
+  // See: https://developer.wordpress.org/reference/functions/wp_kses_stripslashes/
+  .replace(/\\"/g, "\\u0022");
+}
+
+// Generate blocks Post to save
 function pagelayer_generate_sc(selector, selfEle){
 	
 	selfEle = selfEle || false;
@@ -3230,32 +3398,27 @@ function pagelayer_generate_sc(selector, selfEle){
 		}
 		
 		// Create the tag
-		var data = '['+final_tag+' pagelayer-id="'+id+'" ';
-				
+		var data = {};
+			
 		// Get the attributes to store
 		jQuery.each(jEle[0].attributes, function(i, attrib){
 			var res = attrib.name.match(/^pagelayer-a-(.+)/i);
 			if(res && res[1] != inner){
 				//console.log(attrib.name+' '+res[1]);
-				data += ' '+res[1]+'="'+pagelayer_escapeHTML(attrib.value)+'"';
+				data[res[1]] = attrib.value;
 			}
 		});
 		
-		data = data+']';
-		
-		// Add to the text
-		txt = txt+data+"\n";
+		data['pagelayer-id'] = id;
+		data = pagelayer_serializeAttributes(data);
+				
+		var content = '';
 		
 		// Any internal function to handle the save ?
 		var func = window['pagelayer_tag_'+tag];
 		if(typeof func == 'function'){
 			
-			var content = '';
 			content = func(jEle);
-			
-			if(content.length > 0){
-				txt = txt+content;
-			}
 			
 		// If its a Row or Column or Group then it will have children
 		}else if(jEle.hasClass('pagelayer-row') || jEle.hasClass('pagelayer-col') || jEle.hasClass('pagelayer-inner_row') || pagelayer_is_group(tag)){
@@ -3276,18 +3439,19 @@ function pagelayer_generate_sc(selector, selfEle){
 			if('child_selector' in pagelayer_shortcodes[tag]){
 				sel = sel.find(pagelayer_shortcodes[tag]['child_selector']);
 			}
-			
-			var childrens = pagelayer_generate_sc(sel);
-			if(childrens.length > 0){
-				txt = txt+childrens;
+						
+			if(jQuery(sel).children(".pagelayer-ele-wrap").length < 1){
+				content = jQuery(sel).html(); // Backward Compatibility
+			}else{
+				content = pagelayer_generate_sc(sel);
+				content = "\n"+content;
 			}
 		
 		// Its a normal element so we might need to handle the content
 		}else{
 			
-			var content = '';
 			if(inner.length > 0){
-				content = jEle.attr('pagelayer-a-'+inner);
+				content = pagelayer_get_att(jEle, inner);
 				if(!content){
 					content = '';
 				}
@@ -3295,15 +3459,14 @@ function pagelayer_generate_sc(selector, selfEle){
 				content = '';//jEle.html();
 			}
 			
-			if(content.length > 0){
-				txt = txt+content;
-			}
-			
 		}
 		
-		// Close the tag
-		txt = txt+"[/"+final_tag+"]\n";
-		
+		if (pagelayer_empty(content)) {
+			txt +=  "<!-- ".concat(pagelayer_block_prefix, ":pagelayer/").concat(final_tag, " ").concat(data, " /-->\n");
+		}else{
+			txt +=  "<!-- ".concat(pagelayer_block_prefix, ":pagelayer/").concat(final_tag, " ").concat(data, " -->").concat(content, "<!-- /").concat(pagelayer_block_prefix, ":pagelayer/").concat(final_tag, " -->\n");
+		}
+
 	};
 	
 	// Are you an element for which to generate the codes ?
@@ -3325,57 +3488,6 @@ function pagelayer_generate_sc(selector, selfEle){
 	
 	return txt;
 	
-};
-
-// Escape charaters in attributes
-var pagelayer_escapeChars = {
-	'\\]' : '#93',
-	'\\[' : '#91',
-	//'=' : '#61',
-	'<' : 'lt',
-	'>' : 'gt',
-	'"' : 'quot',
-	//'&' : 'amp',
-	'\'' : '#39'
-};
-
-// To unescape
-var pagelayer_unescapeChars = {
-	'#93' : ']',
-	'#91' : '[',
-	//'#61' : '=',
-	'lt' : '<',
-	'gt' : '>',
-	'quot' : '"',
-	//'amp' : '&',
-	'#39' : '\''
-};
-
-var pagelayer_escaperegex_S = '[';
-for(var key in pagelayer_escapeChars) {
-	pagelayer_escaperegex_S += key;
-}
-pagelayer_escaperegex_S += ']';
-
-var pagelayer_escaperegex = new RegExp( pagelayer_escaperegex_S, 'g');
-
-// The function which escapes everything
-function pagelayer_escapeHTML(str) {
-	return str.replace(pagelayer_escaperegex, function(m) {
-		if(m == '[' || m == ']') m = '\\'+m;
-		return '&' + pagelayer_escapeChars[m] + ';';
-	});
-};
-
-// This will unescape everything
-function pagelayer_unescapeHTML(str){
-	return str.replace(/\&([^;]+);/g, function (entity, entityCode) {
-		if(entityCode in pagelayer_unescapeChars){
-			return pagelayer_unescapeChars[entityCode];
-		}else{
-			return entity;
-		}
-	});
 };
 
 // Show the required leftbar tab
@@ -3512,10 +3624,43 @@ function pagelayer_leftbar(){
 		pagelayer_active = {};
 		
 		var pl_tag = jQuery(this).attr('pagelayer-tag') || 'pl_post_props';
+		var nModal = jQuery(this).attr('pagelayer-modal-none');
+		
+		if(pl_tag == 'pl_post_props' && pagelayer_empty(nModal) ){
+			
+			var propsModal = pagelayer.$$('.pagelayer-props-modal');
+			
+			if(propsModal.find('.pagelayer-meta-iframe').length < 1){
+				propsModal.find('.pagelayer-props-wrap').append('<iframe class="pagelayer-meta-iframe" src="'+ pagelayer_post_props +'"></iframe>');
+			}
+			
+			propsModal.show();
+			pagelayer.$$('.pagelayer-meta-iframe').contents().find('.pagelayer-tab-items[data-tab="post_props"]').click();
+			return;
+		}
+		
 		pagelayer_post_settings(pl_tag);
+		
 	});
 	
-	// On click Pagelayer setting icon
+	// Pagelayer post advance setting modal handler
+	var propsModal = pagelayer.$$('.pagelayer-props-modal');
+	propsModal.find('.pagelayer-pros-modal-close').on('click', function(event){
+		propsModal.hide();
+	});
+		
+	propsModal.on('click', function(event){
+		var target = jQuery(event.target);
+		
+		if(target.closest('.pagelayer-props-modal-wrap').length > 0){
+			return;
+		}
+		
+		propsModal.hide();
+	});
+		
+	
+// On click Pagelayer setting icon
 	var global_widget_list = function(){
 		
 		var gHtml = '';
@@ -3544,7 +3689,8 @@ function pagelayer_leftbar(){
 		// Indivdual icon
 		for(var y in pagelayer_global_widgets){
 			
-			var sc = pagelayer_global_widgets[y]['tag'];
+			var sc = pagelayer_tag( jQuery(pagelayer_global_widgets[y]['$']) );
+			
 			
 			if(!(sc in pagelayer_shortcodes) || 'not_visible' in pagelayer_shortcodes[sc]){
 				continue;
@@ -3862,11 +4008,12 @@ function pagelayer_history_setup(force){
 						
 						props_new.attr('pagelayer-a-post_name', post_name);
 						props_new.attr('pagelayer-a-post_status', post_status);
-					}
-					
-					alert(obj['success']);
-					pagelayer_element_setup();
+					}         
+
+          // Need to pass true to render table
+					pagelayer_element_setup('.pagelayer-ele', true);
 					pagelayer_add_widget();
+          alert(obj['success']);
 				}
 			}
 		});
@@ -5225,13 +5372,68 @@ function pagelayer_parse_theme_vars(img_url){
 // Tooltip Setup for Editor
 function pagelayer_tooltip_setup(){	
 	//pagelayer.$$('[data-tlite]').each(function(){pagelayer_tlite.show(jQuery(this).get(0));});return;
-	pagelayer.$$('[data-tlite]').on('hover', function(){
+	pagelayer.$$('[data-tlite]').hover(function(){
 		pagelayer_tlite.show(jQuery(this).get(0));
-	}).on('mouseleave', function(){
+	}, function(){
 		pagelayer_tlite.hide(jQuery(this).get(0));
 	});
 	
 };
+
+// Pagelayer Messages
+function pagelayer_show_msg(msg, time){
+	
+	time = time || 5000;
+	var nholder = pagelayer.$$('.pagelayer-editor-notice');
+	var mEle = jQuery('<div class="pagelayer-editor-msg">'+msg+' <span class="pli pli-cross pagelayer-notice-x"></span></div>');
+	
+	nholder.append(mEle);
+	
+	mEle.find('.pagelayer-notice-x').on('click', function(){
+		mEle.css({opacity: 0});
+		setTimeout(function(){
+			mEle.remove();
+		}, 900);
+	});
+	
+	setTimeout(function(){
+		mEle.find('.pagelayer-notice-x').click();
+	}, time);
+	
+}
+
+// Pagelayer confirmation box
+function pagelayer_confirmation_box(message, yesCallback, noCallback, yesText, noText) {
+	
+    yesText = yesText || 'Yes';
+    noText = noText || 'No';
+	
+	var dialog = jQuery('<div class="pagelayer-confirm-box-holder">'+
+		'<div class="pagelayer-confirm-box" style="border-radius:5px">'+
+			'<div class="pagelayer-confirmation-msg">'+ message +'</div>'+
+			'<center>'+
+				'<span class="pagelayer-btnyes button button-pagelayer">'+ yesText +'</span>&nbsp;&nbsp;&nbsp;'+
+				'<span class="pagelayer-btnno button button-pagelayer">'+ noText +'</span>'+
+			'</center>'+
+		'</div>'+
+	'</div>');
+	
+	pagelayer.$$('body').append(dialog);
+
+	dialog.find('.pagelayer-btnyes').on('click', function() {
+		dialog.remove();
+		if(typeof yesCallback == 'function'){
+			yesCallback();
+		}
+	});
+	dialog.find('.pagelayer-btnno').on('click', function() {
+		dialog.remove();
+		if(typeof noCallback == 'function'){
+			noCallback();
+		}
+	});
+	dialog.show();
+}
 
 function pagelayer_trim(str, charlist){
 	//  discuss at: http://locutus.io/php/trim/

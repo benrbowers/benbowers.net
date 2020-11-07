@@ -35,6 +35,10 @@ function pagelayer_license(){
 		pagelayer_install_pro();
 		return;		
 	}
+	
+	if(isset($_REQUEST['save_pl_license'])){
+		check_admin_referer('pagelayer-options');
+	}
 
 	// Is there a license key ?
 	if(isset($_POST['save_pl_license'])){
@@ -88,10 +92,6 @@ function pagelayer_license_T(){
 	global $pagelayer, $pl_error;
 
 	pagelayer_page_header('Pagelayer License');
-	
-	if(isset($_REQUEST['save_pl_license'])){
-		check_admin_referer('pagelayer-options');
-	}
 
 	// Saved ?
 	if(!empty($GLOBALS['pl_saved'])){
@@ -117,7 +117,7 @@ function pagelayer_license_T(){
 	<div class="postbox">
 	
 		<button class="handlediv button-link" aria-expanded="true" type="button">
-			<span class="screen-reader-text">Toggle panel: System Information</span>
+			<span class="screen-reader-text"><?php _e('Toggle panel: System Information');?></span>
 			<span class="toggle-indicator" aria-hidden="true"></span>
 		</button>
 		
@@ -197,27 +197,4 @@ function pagelayer_license_T(){
 	
 	pagelayer_page_footer();
 
-}
-
-// The Pagelayer Admin Dashbaoard
-function pagelayer_dashboard_T(){
-	
-	global $pl_error;
-
-	pagelayer_page_header('Pagelayer License');
-	
-	echo '<script src="'.PAGELAYER_API.(defined('PAGELAYER_PREMIUM') ? 'news_pro.js' : 'news.js').'"></script><br>';
-
-	// Saved ?
-	if(!empty($GLOBALS['pl_saved'])){
-		echo '<div id="message" class="updated"><p>'. __('The settings were saved successfully', 'pagelayer'). '</p></div><br />';
-	}
-	
-	// Any errors ?
-	if(!empty($pl_error)){
-		pagelayer_report_error($pl_error);echo '<br />';
-	}
-
-	pagelayer_page_footer();
-	
 }

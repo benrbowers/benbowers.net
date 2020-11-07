@@ -2,9 +2,9 @@
 Contributors: pagelayer
 Tags: page builder, editor, landing page, drag-and-drop, pagelayer, form-builder, popup, widgets, softaculous, visual editor, wysiwyg, design, maintenance mode, coming soon, under construction, website builder, landing page builder, front-end builder, site-builder
 Requires at least: 4.7
-Tested up to: 5.4
+Tested up to: 5.5
 Requires PHP: 5.5
-Stable tag: 1.1.8
+Stable tag: 1.3.3
 License: LGPL v2.1
 License URI: http://www.gnu.org/licenses/lgpl-2.1.html
 
@@ -108,6 +108,143 @@ Do you have questions related to PageLayer ? Use the following links :
 6. **Sections** Pagelayer has a nice grid systems with rows and columns. You can create sections so much easily with Pagelayer
 
 == Changelog ==
+
+= 1.3.3 (November 2, 2020) =
+* [Bug-Fix] The last version of Pagelayer was causing a set_current_screen conflict with WooCommerce. This is fixed.
+
+= 1.3.2 (October 28, 2020) =
+* [Feature] The post properties in Pagelayer editor has been further improved, now clicking on the setting icon modal will be shown, from where you can setting up post properties. 
+* [Feature] Advanced Custom fields are now supported in the Pagelayer Editors new post properties.
+* [Feature] The tabs, accordion and collapse widgets have been further improved. Now user can drag widgets inside these widgets.
+* [Feature] Added single page Import support for PopularFX templates.
+* [Task] From this version onwards, we are starting to save the post content in block format.
+* [Bug-Fix] If the Pagelayer editor was not enabled for the post type, the "Edit with pagelayer" link was shown. This is fixed.
+* [Bug-Fix] If the comment was closed for the post, the  comment count in the post info widget was still showing. This is fixed.
+* [Bug-Fix] In the some cases the link was not rendering properly in th list widget. This is fixed.
+
+= 1.3.1 (October 13, 2020) =
+* [Improvement] Added the option to save the popup cookie on closing as well.
+* [Improvement] Added Cell Width options for Table Cells.
+* [Improvement] In Social Share Widget, added the profile name option for Instagram, Skype, Dribbble, etc.
+* [Improvement] Added option to disable title in site title widget. Now you can disable the site title if the logo is enabled.
+* [Improvement] Added auto-detection for reply-to email in contact form. Now if the user does not add reply-to in addition fields then we will detect email from user-submitted data.
+* [Improvement] Added $site_title variable in contact form, now user can use use $site_title to print site title.
+* [Improvement] Copyright text can now be saved from the Widget itself while editing in Pagelayer.
+* [Task] In some cases givecss.php was blocked by certain plugins to execute due to PHP. We have improved detection of the same and it will be served over admin-ajax.php to by pass such plugins. Pagelayer will also detect if givecss.php is functional and access it directly for better speed if possible.
+* [Task] Default values for Archive Posts have been set for better compatibility in responsive mode.
+* [Task] For contact forms, an only Label option type has been added.
+* [Task] In testimonial sliders if there is no image set for a testimonial, then no image will be shown. Earlier the pagelayer default image was shown.
+* [Bug-fix] The detection script for givejs.php and givecss.php which serves compressed CSS and JS files was not working correctly in certain cases. This is fixed.
+* [Bug-Fix] The Star widget would not show full coverage when a 5 stars was set. This is fixed.
+* [Bug-Fix] Unnecessary new lines were being entered in certain widgets. This is fixed.
+* [Bug-Fix] While saving the Address, Phone Number, etc in Pagelayer Contact Settings, certain special characters were getting a Slash Prefix. This is fixed.
+* [Bug-Fix] In Modal Popup, the live view was not being set correctly when the close option was set to outside. This is fixed.
+
+= 1.3.0 (September 26, 2020) =
+* [Improvement] We have improved the Editor UX. Now we will show you a small notice modal for 5 seconds for your actions.
+* [Improvement] The copy-paste method has been further improved.
+* [Task] In certain cases the JS and CSS file was not loaded properly because PHP execution was not allowed for compressing the static content. We have added auto detection to serve via PHP if its available.
+* [Bug-Fix] In the primary menu widget if the menu name was longer, the menu item would exceed the border. This is fixed.
+* [Bug-Fix] While duplicating, the accordion and collapse widgets were not rendering properly. This is fixed.
+* [Bug-fix] In some cases, while turning on the error report in PHP, some PHP error notice was shown. This is fixed.
+* [Bug-fix] The popup option styles were not applied properly. This is fixed.
+* [Bug-fix] The clone and delete icons were removed from the Body Props as they were not in use.
+
+= 1.2.9 (September 23, 2020) =
+* [Bug-Fix] The image box and icon box widget content lines were broken with characters. This is fixed.
+* [Bug-Fix] In certain cases the animation heading widget was not rendering properly after last version. This is fixed.
+
+= 1.2.8 (September 18, 2020) =
+* [Task] Adding support for block formats in Pagelayer. This is complete but due to compatibility, we are still storing in shortcodes which will change over the next few versions.
+* [Improvement] The CSS rendering method has been further improved and will reduce your page size.
+* [Bug-Fix] While applying the page/post revisions, the revision content was not rendering properly. This is fixed.
+* [Bug-Fix] In the Image Hotspot widget "Tooltip Display" was not working properly. This is fixed.
+* [Bug-Fix] If the animation heading widget contains the <p> tag then it was not rendering properly. This is fixed.
+
+= 1.2.7 (September 15, 2020) =
+* [Improvement] Description added in Phone, Email, Address, Copyright widgets.
+* [Improvement] For the Modal Widget, clicking on the grey background will close the Modal box.
+* [Improvement] The splash widget has been further improved and added a max-height option for the splash container.
+* [Bug-Fix] List Item widget url not showing dropdown of suggestions of pages and posts. This is fixed.
+* [Bug-Fix] RSS and Archive WordPress widget checkboxes were not working properly. This is fixed.
+* [Bug-Fix] Shadow setting was not hiding even after changing the animation type to rotating. This is fixed.
+* [Bug-Fix] Rotate-2, Rotate-3 and Scale effects in animated heading was not working after refresh. This is fixed.
+* [Bug-Fix] Adding many Animated Headings in a page was not working properly. This is fixed.
+* [Bug-Fix] Image Hotspot widget animation was not working. This is fixed.
+* [Bug-Fix] Image Hotspot widget tooltip with display on click was not working properly. This is fixed.
+* [Bug-Fix] Facebook Embed widget width was not responsive. This is fixed.
+* [Bug-Fix] Single word content in Icon Box widget was not splitting, due to this the text was crossing the border of the widget. This is fixed.
+* [Bug-Fix] In some cases button with stretched property was crossing its border. This is fixed.
+* [Bug-Fix] Image Box and Icon Box widget animation was not working when url is added. This is fixed.
+
+= 1.2.6 (September 7, 2020) =
+* [Bug-Fix] If JetPack WP.ME / shortlinks were enabled, Pagelayer editor would not open due to the wrong URL structure. This is fixed.
+* [Bug-Fix] A Column would not hid in Mobile view when the "Hide in Mobile" option was enabled. This is fixed.
+* [Bug-Fix] pagelayer_pl_row_slider error was shown for some PopularFX themes. This is fixed.
+
+= 1.2.5 (August 28, 2020) =
+* [Bug-Fix] In certain cases the Pages/Posts title was replaced with previous title. This is fix.
+
+= 1.2.4 (August 28, 2020) =
+* [Task] We have tested the jQuery changes in WordPress 5.5.
+* [Bug-Fix] WordPress widgets were not rendering properly. This is fixed.
+* [Bug-Fix] In some cases CSS was not rendering properly. This is fixed.
+* [Bug-Fix] In the Accordion and Collapse widget, when we click on the content area, the Accordion and Collapse tabs were closed. This is fixed.
+
+= 1.2.3 (August 24, 2020) =
+* [Task] The language strings which were hard-coded have been moved to the pagelayer language pack.
+* [Task] Added option to open link in new tab for the image box and icon box widget.
+* [Bug-Fix] The Textarea property has been further improved, now Textarea resizes vertically.
+* [Bug-Fix] Removed some incompatible code.
+* [Bug-Fix] The right side block background color was not correctly applied to the hover in the timeline widget. This is fixed.
+* [Bug-Fix] In the accordion and collapse widget the active tab color was not working properly. This is fixed.
+* [Bug-Fix] In certain cases, the Pagelayer editor was stuck at 90% due to a js error related to fonts. This is fixed.
+* [Bug-Fix] The Modal widget has been further improved and added a max-height option for the modal container.
+* [Bug-Fix] While editing a page/post if anyone clicked on a link outside the editable area, the page was redirected and changes were not saved. This is fixed.
+
+= 1.2.2 (August 11, 2020) =
+* [Bug-Fix] In some cases, the width of the columns of a Pagelayer Template while editing a post was not applied properly. This is fixed.
+
+= 1.2.1 (August 10, 2020) =
+* [Improvement] If there is a Javascript error during Pagelayer editor loading, the users will be shown the error and also a support option will be shown to the user !
+* [Improvement] For the Splash Widget, clicking on the grey background will close the splash box.
+* [Improvement] Its now possible to import templates of a theme which are made with Pagelayer.
+* [Task] Added a Getting Started informative page and video for our users.
+* [Task] Improved the login widget in the premium version of Pagelayer.
+* [Bug-Fix] On window resize, the Facebook page widget will be resized as well.
+* [Bug-Fix] For the Video widget, the overlay image was not shown properly and also the video would not play when the image overlay was clicked. This is fixed.
+
+= 1.2.0 (July 23, 2020) =
+* [Improvement] Mobile and tablet preview on the editor has been improved. Now the width of the preview will be determined according to the values set in the Website Settings of Pagelayer.
+* [Improvement] The element hide media query has been improved for Desktops, Tablets and Mobiles.
+* [Improvement] The table widget has been further improved. Now users can edit a table cell content in the live editor rather than using the left panel to set the values.
+* [Task] The website settings are now available in the free version of Pagelayer.
+* [Task] Added width option for the Facebook page widget.
+* [Task] The post title widget has been improved.
+* [Bug-Fix] Text editor undo and redo icons were not correct. This is fixed.
+* [Bug-Fix] In the certain cases, while editing the Splash widget the modal was hidden. This is fixed.
+* [Bug-Fix] While using the product archives widget on a pagelayer template, the products list was not shown. This is fixed.
+
+= 1.1.9 (July 14, 2020) =
+* [Feature] Added Website settings to set global font styles and colors.
+* [Improvement] We have improved the Link property and you can now search posts/pages links in your WordPress site. Those links will automatically be updated if the target URL changes.
+* [Improvement] The image dropzone has further been improved. It will not show drop options if the dragged object is not an image.
+* [Improvement] We have improved the export wizard. Now users can export posts by its type and also export the media.
+* [Task] Added "playsinline" attribute in the background video in rows and columns.
+* [Task] The Archive post widget has been improved and so has the all posts widgets.
+* [Task] Added target option in Social Share widget.
+* [Task] The post content widget will only show a dummy placeholder while using the post content widget in a Pagelayer Template. This makes it easy to edit and understand the structure of the template.
+* [Task] Added dummy pagination for the Archive Posts widget while editing within a Pagelayer template.
+* [Task] The language strings which were hard-coded have been moved to the language pack.
+* [Task] The typography property has been further improved.
+* [Task] Added placeholder for featured image widget while editing a Pagelayer Template.
+* [Bug-Fix] Singular Templates were not showing Media / Attachments properly. This is fixed.
+* [Bug-Fix] In certain cases, the Hide on Mobile / Tablet was not working properly. This is fixed.
+* [Bug-Fix] The pQuery class name was conflicting with other plugins. This is fixed.
+* [Bug-Fix] While editing a pagelayer template, the editable area was not shown in certain cases. This is fixed.
+* [Bug-Fix] The Archive Title widget was not rendered properly while editing a Pagelayer Template. This is fixed.
+* [Bug-Fix] The row max-width option was applied on its childrens row / inner row. This is fixed.
+* [Bug-Fix] In certain cases, the singular/archive templates were not being saved properly and were applied to all the singular/archive pages respectively. This is fixed.
 
 = 1.1.8 (July 02, 2020) =
 * [Security-Fix] Our internal security audit revealed XSS vulnerabilities. This is fixed. Please upgrade to this version ASAP !

@@ -7,7 +7,7 @@
  * @package pQuery
  */
 
-namespace pQuery;
+namespace pagelayerQuery;
 
 /**
  * Converts a XML document to an array

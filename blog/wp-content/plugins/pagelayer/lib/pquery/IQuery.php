@@ -1,6 +1,6 @@
 <?php
 
-namespace pQuery;
+namespace pagelayerQuery;
 
 interface IQuery extends \Countable {
    /// Methods ///

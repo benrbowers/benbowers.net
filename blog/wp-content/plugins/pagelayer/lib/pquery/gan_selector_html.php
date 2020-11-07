@@ -7,7 +7,7 @@
  * @package pQuery
  */
 
-namespace pQuery;
+namespace pagelayerQuery;
 
 /**
  * Tokenizes a css selector query
@@ -281,7 +281,7 @@ class HtmlSelector {
 	 * @internal If string, then it will create a new instance as parser
 	 * @var CSSQueryTokenizer
 	 */
-	var $parser = 'pQuery\\CSSQueryTokenizer';
+	var $parser = 'pagelayerQuery\\CSSQueryTokenizer';
 
 	/**
 	 * Target of queries

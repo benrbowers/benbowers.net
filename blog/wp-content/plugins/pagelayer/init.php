@@ -5,7 +5,7 @@ if (!defined('ABSPATH')) exit;
 
 define('PAGELAYER_BASE', plugin_basename(PAGELAYER_FILE));
 define('PAGELAYER_PRO_BASE', 'pagelayer-pro/pagelayer-pro.php');
-define('PAGELAYER_VERSION', '1.1.8');
+define('PAGELAYER_VERSION', '1.3.3');
 define('PAGELAYER_DIR', dirname(PAGELAYER_FILE));
 define('PAGELAYER_SLUG', 'pagelayer');
 define('PAGELAYER_URL', plugins_url('', PAGELAYER_FILE));
@@ -17,6 +17,8 @@ define('PAGELAYER_DOCS', 'https://pagelayer.com/docs/');
 define('PAGELAYER_API', 'https://api.pagelayer.com/');
 define('PAGELAYER_SC_PREFIX', 'pl');
 define('PAGELAYER_YOUTUBE_BG', 'https://www.youtube.com/watch?v=Csa6rvCWmLU');
+define('PAGELAYER_BLOCK_PREFIX', defined('SITEPAD') ? 'sp' : 'wp');
+define('PAGELAYER_DEV', file_exists(dirname(__FILE__).'/dev.php') ? 1 : 0);
 
 include_once(PAGELAYER_DIR.'/main/functions.php');
 include_once(PAGELAYER_DIR.'/main/class.php');
@@ -100,16 +102,34 @@ function pagelayer_load_plugin(){
 	// Is there any ACTION set ?
 	$pagelayer->action = pagelayer_optreq('pagelayer-action');
 
-	// Load settings 
-	$options = get_option('pagelayer_options');
+	// Load settings
 	$pagelayer->settings['post_types'] = empty(get_option('pl_support_ept')) ? ['post', 'page'] : get_option('pl_support_ept');
+	$pagelayer->settings['enable_giver'] = get_option('pagelayer_enable_giver');
 	$pagelayer->settings['max_width'] = (int) (empty(get_option('pagelayer_content_width')) ? 1170 : get_option('pagelayer_content_width'));
 	$pagelayer->settings['tablet_breakpoint'] = (int) (empty(get_option('pagelayer_tablet_breakpoint')) ? 768 : get_option('pagelayer_tablet_breakpoint'));
 	$pagelayer->settings['mobile_breakpoint'] = (int) (empty(get_option('pagelayer_mobile_breakpoint')) ? 360 : get_option('pagelayer_mobile_breakpoint'));
+	$pagelayer->settings['body_font'] = get_option('pagelayer_body_font');
+	$pagelayer->settings['body'] = get_option('pagelayer_body_typography');
+	$pagelayer->settings['h1'] = get_option('pagelayer_h1_typography');
+	$pagelayer->settings['h2'] = get_option('pagelayer_h2_typography');
+	$pagelayer->settings['h3'] = get_option('pagelayer_h3_typography');
+	$pagelayer->settings['h4'] = get_option('pagelayer_h4_typography');
+	$pagelayer->settings['h5'] = get_option('pagelayer_h5_typography');
+	$pagelayer->settings['h6'] = get_option('pagelayer_h6_typography');
+	$pagelayer->settings['color'] = get_option('pagelayer_color');
+	$pagelayer->settings['sidebar'] = get_option('pagelayer_sidebar');
+	
+	// To make things backward compatible
+	if(!empty($pagelayer->settings['body_font'])){
+		$pagelayer->settings['body']['font-family'] = $pagelayer->settings['body_font'];
+	}
 	
 	// Load the language
 	load_plugin_textdomain('pagelayer', false, PAGELAYER_SLUG.'/languages/');
-
+	
+	// Load our array for builder
+	pagelayer_builder_array();
+	
 	// Its premium
 	if(defined('PAGELAYER_PREMIUM')){
 	
@@ -140,6 +160,12 @@ function pagelayer_load_plugin(){
 			'image' => PAGELAYER_URL.'/images/pagelayer-logo-256.png'
 		]);
 	
+	}	
+	
+	// Show the getting started video option
+	$seen = get_option('pagelayer_getting_started');
+	if(empty($seen) && @$_GET['page'] != 'pagelayer_getting_started'){
+		add_action('admin_notices', 'pagelayer_getting_started_notice');
 	}
 
 }
@@ -183,48 +209,212 @@ function pagelayer_admin_menu() {
 
 	// Settings Page
 	add_submenu_page('pagelayer', __('Pagelayer Editor'), __('Settings'), $capability, 'pagelayer', 'pagelayer_page_handler');
+	
+	// Meta Settings Page
+	add_submenu_page('admin.php', __('Meta Settings'), __('Meta Settings'), 'edit_posts', 'pagelayer_meta_setting', 'pagelayer_meta_handler');
+	
+	// UI Settings
+	add_submenu_page('pagelayer', __('Website Settings'), __('Website Settings'), $capability, 'pagelayer_website_settings', 'pagelayer_website_page');
 
-	// Its premium
-	if(defined('PAGELAYER_PREMIUM')){
+	// Add new template
+	add_submenu_page('pagelayer', __('Theme Templates'), __('Theme Templates'), $capability, 'edit.php?post_type=pagelayer-template');
 
-		// Fonts link
-		add_submenu_page('pagelayer', __('Font Settings'), __('Font Settings'), $capability, 'admin.php?page=pagelayer#settings');
+	// Add new template Link
+	//add_submenu_page('pagelayer', __('Add New Template'), __('Add New Template'), $capability, 'edit.php?post_type=pagelayer-template#new');
 
-		// Add new template
-		add_submenu_page('pagelayer', __('Theme Templates'), __('Theme Templates'), $capability, 'edit.php?post_type=pagelayer-template');
+	// Add new template
+	add_submenu_page('pagelayer', __('Add New Template'), __('Add New Template'), $capability, 'pagelayer_template_wizard', 'pagelayer_builder_template_wizard');
 
-		// Add new template Link
-		//add_submenu_page('pagelayer', __('Add New Template'), __('Add New Template'), $capability, 'edit.php?post_type=pagelayer-template#new');
+	// Export Template Wizard
+	add_submenu_page('pagelayer', __('Export Templates into a Theme'), __('Export Templates'), $capability, 'pagelayer_template_export', 'pagelayer_builder_export');
+	
+	// Getting Started
+	add_submenu_page('pagelayer', __('Getting Started'), __('Getting Started'), $capability, 'pagelayer_getting_started', 'pagelayer_getting_started');
 
-		// Add new template
-		add_submenu_page('pagelayer', __('Add New Template'), __('Add New Template'), $capability, 'pagelayer_template_wizard', 'pagelayer_builder_template_wizard');
-
-		// Export Template Wizard
-		add_submenu_page('pagelayer', __('Export Templates into a Theme'), __('Export Templates'), $capability, 'pagelayer_template_export', 'pagelayer_builder_export');
-
-	// Its free
-	}else{
+	// Its Free
+	if(!defined('PAGELAYER_PREMIUM')){
 
 		// Go Pro link
 		add_submenu_page('pagelayer', __('Pagelayer Go Pro'), __('Go Pro'), $capability, PAGELAYER_PRO_URL);
 
 	}
 
-	// Import Page
-	add_submenu_page('pagelayer', __('Import a Theme and its Templates'), __('Import Theme'), $capability, 'pagelayer_import', 'pagelayer_import_page');
-
 	// License Page
 	add_submenu_page('pagelayer', __('Pagelayer Editor'), __('License'), $capability, 'pagelayer_license', 'pagelayer_license_page');
 
+	// Import Page
+	add_submenu_page('admin.php', __('Import a Theme and its Templates'), __('Import Theme'), $capability, 'pagelayer_import', 'pagelayer_import_page');
+
+}
+
+// This function will handle the Settings Pages in PageLayer
+function pagelayer_website_page(){
+
+	global $wp_version, $pagelayer;
+
+	include_once(PAGELAYER_DIR.'/main/website.php');
+	
+	pagelayer_website_settings();
+
+}
+
+// Getting Started
+function pagelayer_getting_started(){
+
+	global $wp_version, $pagelayer;
+	
+	update_option('pagelayer_getting_started', time());
+
+	include_once(PAGELAYER_DIR.'/main/getting_started.php');
+	
+}
+
+// This function will handle the post_metas Pages in PageLayer
+function pagelayer_meta_handler(){
+
+	global $wp_version, $pagelayer;
+
+	include_once(PAGELAYER_DIR.'/main/post_metas.php');
+	
+	pagelayer_meta_page();
+
+}
+
+// Pagelayer post meta page view handler
+add_action('admin_head', 'pagelayer_post_meta_page');
+function pagelayer_post_meta_page() {
+	
+	// Set Current screen
+	$screen = get_current_screen();
+	$meta_id = 'admin_page_pagelayer_meta_setting';
+	
+	if( !is_admin() || trim($screen->id) != $meta_id ) {
+		return;
+	}
+	
+	if(!isset($_REQUEST['post'])){
+		return;		
+	}
+	
+	// Remove all the notice hooks
+	remove_all_actions('admin_notices');
+	remove_all_actions('all_admin_notices');
+	
+	$_REQUEST['post'] = (int) $_REQUEST['post'];
+	$post = get_post( $_REQUEST['post'] );
+	
+	$meta_box_url = admin_url( 'post.php' );		
+	$meta_box_url = add_query_arg(
+		array(
+			'post'	=> $post->ID,
+			'action'	=> 'editpost',
+		),
+		$meta_box_url
+	);
+	
+	echo '<style>
+.'.$meta_id.' #adminmenumain, .'.$meta_id.' #wpfooter, .'.$meta_id.' #wpadminbar{
+display:none;
+}
+.'.$meta_id.' #wpcontent{
+margin:auto;
+}
+</style>
+	
+<script type="text/javascript">
+
+jQuery(document).ready(function(e){
+	pagelayer_prevent_click_metas();
+});
+
+// Prevent the click Inside the meta pages
+function pagelayer_prevent_click_metas(){
+	jQuery(document).on("submit", function(event){
+		event.preventDefault();
+	});
+	
+	jQuery(document).on("click", function(event){
+		var target = jQuery(event.target);
+		if (target.closest("a").length > 0) {
+			event.preventDefault();
+			var href = target.closest("a").attr("href");
+			
+			if(!href.match(/(http|https):\/\//g)){
+				return;
+			}
+			
+			var exp = new RegExp("(http|https):\/\/"+window.location.hostname, "g");
+			
+			// Open new window
+			if(href.match(exp)){
+				
+				// Reload same window
+				window.parent.location.assign(href);
+			}else{
+				window.open(href, "_blank");
+			}
+			
+		}
+	});
+}
+
+function pagelayer_post_edit(jEle, e){
+	
+	e.preventDefault();
+	var formData = new FormData( jQuery(jEle)[0] );
+
+	jQuery.ajax({
+		url: "'.$meta_box_url.'",
+		type: "POST",
+		data: formData,
+		processData: false,
+		contentType: false,
+		cache:false,
+		success:function(result){
+			//window.location.reload();						
+			alert("Post meta has been updated successfully !");
+		},
+		error:function(result){				
+			alert("There is an error while updating post meta !");
+		}
+	});
+}
+		
+</script>';
+	
+}
+
+// On post Save handler
+add_action('save_post', 'pagelayer_save_post', 10, 3);
+function pagelayer_save_post( $post_id, $post, $update ) {
+	
+	if( !isset($_REQUEST['is_pagelayer_editor']) ){
+		return;
+	}
+	
+	// Save Header and footer code
+	$header_code = !empty($_REQUEST['pagelayer_header_code']) ? $_REQUEST['pagelayer_header_code'] : '' ;
+	$footer_code = !empty($_REQUEST['pagelayer_footer_code']) ? $_REQUEST['pagelayer_footer_code'] : '' ;
+	
+	// Set Custom header footer code
+	if(!empty($header_code)){
+		update_post_meta($post_id, 'pagelayer_header_code', $header_code);
+	}else{
+		delete_post_meta($post_id, 'pagelayer_header_code');
+	}
+	
+	if(!empty($footer_code)){
+		update_post_meta($post_id, 'pagelayer_footer_code', $footer_code);
+	}else{
+		delete_post_meta($post_id, 'pagelayer_footer_code');
+	}
+	
 }
 
 // This function will handle the Settings Pages in PageLayer
 function pagelayer_page_handler(){
 
 	global $wp_version, $pagelayer;
-	
-	wp_enqueue_script( 'pagelayer-admin', PAGELAYER_JS.'/pagelayer-admin.js', array('jquery'), PAGELAYER_VERSION);
-	wp_enqueue_style( 'pagelayer-admin', PAGELAYER_CSS.'/pagelayer-admin.css', array(), PAGELAYER_VERSION);
 
 	include_once(PAGELAYER_DIR.'/main/settings.php');
 	
@@ -309,7 +499,7 @@ function pagelayer_enqueue_frontend($force = false){
 				$is_pagelayer = true;
 			}
 			
-			if(preg_match('/\[pl_audio/is', $v->post_content)){
+			if(preg_match('/(\[pl_audio|pagelayer\/pl_audio)/is', $v->post_content)){
 				$is_audio = true;
 			}
 		}
@@ -333,8 +523,8 @@ function pagelayer_enqueue_frontend($force = false){
 		$premium_js = '';
 		$premium_css = '';
 		if(defined('PAGELAYER_PREMIUM')){
-			$premium_js = ',chart.min.js,slick.min.js,premium-frontend.js,shuffle.min.js';
-			$premium_css = ',slick.css,slick-theme.css,premium-frontend.css';
+			$premium_js = ',chart.min.js,premium-frontend.js,shuffle.min.js';
+			$premium_css = ',premium-frontend.css';
 			
 			// Load this For audio widget
 			if($is_audio || pagelayer_is_live_iframe()){
@@ -342,23 +532,42 @@ function pagelayer_enqueue_frontend($force = false){
 				wp_enqueue_style( 'wp-mediaelement' );
 			}
 		}
-				
-		// Enqueue our Editor's Frontend JS
-		wp_register_script('pagelayer-frontend', PAGELAYER_JS.'/givejs.php?give=pagelayer-frontend.js,nivo-lightbox.min.js,wow.min.js,jquery-numerator.js,simpleParallax.min.js,owl.carousel.min.js'.$premium_js, array('jquery'), PAGELAYER_VERSION);
-		wp_enqueue_script('pagelayer-frontend');
-
-		wp_register_style('pagelayer-frontend', PAGELAYER_CSS.'/givecss.php?give=pagelayer-frontend.css,nivo-lightbox.css,animate.min.css,owl.carousel.min.css,owl.theme.default.min.css'.$premium_css, array(), PAGELAYER_VERSION);
-		wp_enqueue_style('pagelayer-frontend');
 		
-		// Get list of enabled icons
-		$icons = pagelayer_enabled_icons();
-		foreach($icons as $icon){
-			wp_register_style($icon, PAGELAYER_CSS.'/givecss.php?give='.$icon.'.min.css', array(), PAGELAYER_VERSION);
-			wp_enqueue_style($icon);
+		if(pagelayer_enable_giver()){
+		
+			$write = '';
+			
+			// Dev mode - Dynamic JS and CSS
+			if(defined('PAGELAYER_DEV') && !empty(PAGELAYER_DEV)){
+				$write = '&write=1';
+			}
+			
+			// Enqueue our Editor's Frontend JS
+			wp_register_script('pagelayer-frontend', PAGELAYER_JS.'/givejs.php?give=pagelayer-frontend.js,nivo-lightbox.min.js,wow.min.js,jquery-numerator.js,simpleParallax.min.js,owl.carousel.min.js&premium='.$premium_js.$write, array('jquery'), PAGELAYER_VERSION);
+		
+			// Get list of enabled icons
+			$icons_css = '';
+			$icons = pagelayer_enabled_icons();
+			foreach($icons as $icon){
+				$icons_css .= ','.$icon.'.min.css';
+			}
+
+			wp_register_style('pagelayer-frontend', PAGELAYER_CSS.'/givecss.php?give=pagelayer-frontend.css,nivo-lightbox.css,animate.min.css,owl.carousel.min.css,owl.theme.default.min.css'.$icons_css.'&premium='.$premium_css.$write, array(), PAGELAYER_VERSION);
+		
+		// Static Files
+		}else{
+			
+			wp_register_script('pagelayer-frontend', PAGELAYER_JS.'/combined'.(!empty($premium_js) ? '.premium' : '').'.js', array('jquery'), PAGELAYER_VERSION);
+
+			wp_register_style('pagelayer-frontend', PAGELAYER_CSS.'/combined'.(!empty($premium_css) ? '.premium' : '').'.css', array(), PAGELAYER_VERSION);
 		}
+		
+		wp_enqueue_script('pagelayer-frontend');
+		wp_enqueue_style('pagelayer-frontend');
 		
 		// Load the global styles
 		add_action('wp_head', 'pagelayer_global_styles', 5);
+		add_filter('body_class', 'pagelayer_body_class', 10, 2);
 		
 		// Load custom widgets
 		do_action('pagelayer_custom_frontend_enqueue');
@@ -377,21 +586,36 @@ function pagelayer_enqueue_fonts(){
 		return;
 	}
 	
-	$url = 'Open Sans:300italic,400italic,600italic,300,400,600&subset=latin,latin-ext';
-	//pagelayer_print($pagelayer->runtime_fonts);die('alpesh');
+	$url = [];
+	
+	// Global CSS settings
+	$css_settings = ['body', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
 		
-	foreach($pagelayer->runtime_fonts as $font){
-		$url .= '|'.$font.':100,100i,200,200i,300,300i,400,400i,500,500i,600,600i,700,700i,800,800i,900,900i';
+	foreach($css_settings as $set){
+	
+		// Fetch body font if given
+		if(!empty($pagelayer->settings[$set]['font-family'])){
+			
+			$val = $pagelayer->settings[$set]['font-family'];			
+			$font_weight = empty($pagelayer->settings[$set]['font-weight']) ? 400 : $pagelayer->settings[$set]['font-weight'];
+			$font_style = empty($pagelayer->settings[$set]['font-style']) ? 'normal' : $pagelayer->settings[$set]['font-style'];$font_style = in_array($font_style, ['italic', 'oblique']) ? 'i' : '';
+			
+			$pagelayer->runtime_fonts[$val][$font_weight.$font_style] = $font_weight.$font_style;
+			
+		}
+	
 	}
 	
-	// Fetch body font if given
-	if(get_option('pagelayer_body_font')){
-		$url .= '|'.get_option('pagelayer_body_font').':100,100i,200,200i,300,300i,400,400i,500,500i,600,600i,700,700i,800,800i,900,900i';
+	foreach($pagelayer->runtime_fonts as $font => $weights){
+		$url[] = $font.':'.implode(',', $weights);
 	}
 	
-	//echo '<link href="https://fonts.googleapis.com/css?family='.$url.'" rel="stylesheet">';
+	// If no fonts are to be set, then we dont set
+	if(empty($url)){
+		return false;
+	}
 	
-	wp_register_style('pagelayer-google-font', 'https://fonts.googleapis.com/css?family='.rawurlencode($url), array(), PAGELAYER_VERSION);
+	wp_register_style('pagelayer-google-font', 'https://fonts.googleapis.com/css?family='.rawurlencode(implode('|', $url)), array(), PAGELAYER_VERSION);
 	wp_enqueue_style('pagelayer-google-font');
 	
 }
@@ -406,6 +630,7 @@ function pagelayer_global_js(){
 var pagelayer_ajaxurl = "'.admin_url( 'admin-ajax.php' ).'?";
 var pagelayer_global_nonce = "'.wp_create_nonce('pagelayer_global').'";
 var pagelayer_server_time = '.time().';
+var pagelayer_is_live = "'.pagelayer_is_live().'";
 var pagelayer_facebook_id = "'.get_option('pagelayer-fbapp-id').'";
 var pagelayer_settings = '.json_encode($pagelayer->settings).';
 var pagelayer_recaptch_lang = "'.(!empty($pagelayer_recaptch_lang) ? $pagelayer_recaptch_lang : '').'";
@@ -418,18 +643,119 @@ function pagelayer_global_styles(){
 	
 	global $pagelayer;
 	
-	$styles = '<style id="pagelayer-global-styles" type="text/css">';
+	$styles = '<style id="pagelayer-global-styles" type="text/css">'.PHP_EOL;
 	
 	// Style for only child row holder
-	$styles .= '.pagelayer-row-stretch-auto > .pagelayer-row-holder, .pagelayer-row-stretch-full > .pagelayer-row-holder.pagelayer-width-auto{ max-width: '.$pagelayer->settings['max_width'].'px; margin-left: auto; margin-right: auto;}';
+	$styles .= '.pagelayer-row-stretch-auto > .pagelayer-row-holder, .pagelayer-row-stretch-full > .pagelayer-row-holder.pagelayer-width-auto{ max-width: '.$pagelayer->settings['max_width'].'px; margin-left: auto; margin-right: auto;}'.PHP_EOL;
 	
-	if(get_option('pagelayer_body_font')){
-		$styles .= 'body *{font-family:'.get_option("pagelayer_body_font").';}';
+	if(!pagelayer_is_live()){
+		
+		// Set responsive value
+		$styles .= '@media (min-width: '.($pagelayer->settings['tablet_breakpoint'] + 1).'px){
+			.pagelayer-hide-desktop{
+				display:none !important;
+			}
+		}
+
+		@media (max-width: '.$pagelayer->settings['tablet_breakpoint'].'px) and (min-width: '.($pagelayer->settings['mobile_breakpoint'] + 1).'px){
+			.pagelayer-hide-tablet{
+				display:none !important;
+			}
+		}
+
+		@media (max-width: '.$pagelayer->settings['mobile_breakpoint'].'px){
+			.pagelayer-hide-mobile{
+				display:none !important;
+			}
+		}'.PHP_EOL;
+
+	}
+
+$styles .= '@media (max-width: '.$pagelayer->settings['tablet_breakpoint'].'px){
+	[class^="pagelayer-offset-"],
+	[class*=" pagelayer-offset-"] {
+		margin-left: 0;
+	}
+
+	.pagelayer-row .pagelayer-col {
+		margin-left: 0;
+		width: 100%;
+	}
+	.pagelayer-row.pagelayer-gutters .pagelayer-col {
+		margin-bottom: 16px;
+	}
+	.pagelayer-first-sm {
+		order: -1;
+	}
+	.pagelayer-last-sm {
+		order: 1;
+	}
+}'.PHP_EOL;
+	
+	// Colors
+	if(!empty($pagelayer->settings['color']['background'])){
+		$pagelayer->settings['body']['background-color'] = $pagelayer->settings['color']['background'];
 	}
 	
-	$styles .= '</style>';
+	if(!empty($pagelayer->settings['color']['text'])){
+		$pagelayer->settings['body']['color'] = $pagelayer->settings['color']['text'];
+	}
+	
+	// Global CSS settings
+	$css_settings = ['body', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+	
+	// PX suffix
+	$pxs = ['font-size', 'letter-spacing', 'word-spacing'];
+	
+	foreach($css_settings as $k => $v){
+		
+		$key = is_numeric($k) ? $v : $k;
+		$r = [];
+			
+		if(empty($pagelayer->settings[$key])){
+			continue;
+		}
+		
+		foreach($pagelayer->settings[$key] as $kk => $vv){
+			
+			if(empty($vv)){
+				continue;
+			}
+			
+			$r[] = $kk.':'.$vv.(in_array($kk, $pxs) ? 'px' : '');
+			
+		}
+		
+		if(empty($r)){
+			continue;
+		}
+		
+		$styles .= 'body.pagelayer-body '.($v == 'body' ? '' : $v).'{'.implode(';', $r)."}\n";
+	}
+	
+	// Link Color
+	if(!empty($pagelayer->settings['color']['link'])){
+		$styles .= 'body.pagelayer-body a{color: '.$pagelayer->settings['color']['link'].'}'.PHP_EOL;
+	}
+	
+	// Link Hover Color
+	if(!empty($pagelayer->settings['color']['link-hover'])){
+		$styles .= 'body.pagelayer-body a:hover{color: '.$pagelayer->settings['color']['link-hover'].'}'.PHP_EOL;
+	}
+	
+	// Link Hover Color
+	if(!empty($pagelayer->settings['color']['heading'])){
+		$styles .= 'body.pagelayer-body h1,h2,h3,h4,h5,h6{color: '.$pagelayer->settings['color']['heading'].'}'.PHP_EOL;
+	}
+	
+	$styles .= PHP_EOL.'</style>';
 	
 	echo $styles;
+}
+
+function pagelayer_body_class($classes, $class){
+	$classes[] = 'pagelayer-body';
+	return $classes;
 }
 
 // Load the live editor if needed
@@ -480,6 +806,11 @@ function pagelayer_after_title(){
 		return;
 	}
 	
+	// Is pagelayer supposed to edit this ?
+	if(!pagelayer_user_can_edit($post)){
+		return;
+	}
+	
 	$link = pagelayer_shortlink($post->ID).'&pagelayer-live=1';
 
 	echo '
@@ -494,6 +825,11 @@ function pagelayer_after_title(){
 function pagelayer_gutenberg_after_title(){
 
 	global $post;
+	
+	// Is pagelayer supposed to edit this ?
+	if(!pagelayer_user_can_edit($post)){
+		return;
+	}
 	
 	$link = pagelayer_shortlink($post->ID).'&pagelayer-live=1';
 
@@ -540,7 +876,14 @@ function pagelayer_old_slug_redirect($link){
 add_filter( 'post_row_actions', 'pagelayer_quick_link', 10, 2 );
 add_filter( 'page_row_actions', 'pagelayer_quick_link', 10, 2 );
 function pagelayer_quick_link($actions, $post){
-	$link = pagelayer_shortlink($post->ID).'&pagelayer-live=1';
+	global $pagelayer;
+	
+	// Is pagelayer supposed to edit this ?
+	if(!pagelayer_user_can_edit($post)){
+		return $actions;
+	}
+
+	$link = pagelayer_shortlink($post->ID).'&pagelayer-live=1';	
 
 	$actions['pagelayer'] = '<a href="'.esc_url( $link ).'">'.__( 'Edit using Pagelayer', 'pagelayer') .'</a>';
 

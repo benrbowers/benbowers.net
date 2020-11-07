@@ -215,27 +215,6 @@ cursor:pointer;
 background:#EF4D4D;
 }
 
-@media (min-width: 769px){
-	.pagelayer-hide-desktop{
-		display:initial;
-		filter:blur(3px);
-	}
-}
-
-@media (max-width: 768px) and (min-width: 361px){
-	.pagelayer-hide-tablet{
-		display:initial;
-		filter:blur(3px);
-	}
-}
-
-@media (max-width: 360px){
-	.pagelayer-hide-mobile{
-		display:initial;
-		filter:blur(3px);
-	}
-}
-
 /* Pagelayer add section area */
 
 .pagelayer-add-widget-area{

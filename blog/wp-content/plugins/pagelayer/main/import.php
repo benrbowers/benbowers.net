@@ -39,7 +39,7 @@ function pagelayer_import(){
 	$pagelayer_pages = @json_decode(file_get_contents($pagelayer_theme_path.'/pagelayer-data.conf'), true);
 	
 	if(isset($_POST['theme'])){
-		$GLOBALS['pl_saved'] = pagelayer_import_theme($pagelayer_theme);
+		$GLOBALS['pl_saved'] = pagelayer_import_theme($pagelayer_theme->template);
 	}
 	
 	// Have we already imported ?
@@ -103,22 +103,6 @@ text-align: center;
 background: #fff;
 padding: 5px 10px;
 border-top: 1px solid #ccc;
-}
-
-.button-pagelayer{
-padding: 12px 25px !important;
-font-size: 15px !important;
-font-weight: bold;
-background: #7444fd !important;
-color: #fff !important;
-border: 1px solid #7444fd !important;
-transition: all .3s linear;
-pointer: cursor;
-}
-
-.button-pagelayer:hover{
-background: #fff !important;
-color: #7444fd !important;
 }
 
 /* The Modal (background) */
@@ -216,7 +200,7 @@ font-weight: 600;
 		</div>
 	</div>
 
-</div> 
+</div>
 
 <script>
 
@@ -304,16 +288,121 @@ jQuery(document).ready(function(){
 <div style="position:fixed; bottom: 30px; right: 30px;">
 	<input name="import_theme" class="button button-pagelayer" value="Import Theme Content" type="button" onclick="pagelayer_modal(\'#pagelayerModal\')" />
 </div>';
+
+add_filter('pagelayer_right_bar_promos', '__return_false');
+
+pagelayer_page_footer(1);
 	
 }
 
 // The actual function to import the theme
-function pagelayer_import_theme($new_theme){
+function pagelayer_import_single($template_name, $items, $pagelayer_theme_path = ''){
 	
 global $wpdb, $wp_rewrite;	
-global $pagelayer, $pagelayer_theme, $pagelayer_theme_url, $pagelayer_theme_path, $pagelayer_pages, $pl_error;
+global $pagelayer, $pl_error;
 	
-	$pagelayer_theme_path = get_stylesheet_directory();
+	if(empty($pagelayer_theme_path)){
+		$pagelayer_theme_path = get_stylesheet_directory();
+	}
+	
+	if(empty($items)){
+		$pl_error[] = 'Items were not submitted';
+		return false;
+	}
+	
+	/////////////////////////
+	// Handle the PAGES Data
+	/////////////////////////
+	
+	// Load the new themes pages array
+	$data = file_get_contents($pagelayer_theme_path.'/pagelayer-data.conf');
+	$data = @json_decode($data, true);
+	//r_print($data);die();
+	
+	if(empty($data['page'])){
+		$pl_error[] = 'Pages list not found. This is not a proper template !';
+		return false;
+	}
+	
+	// Check the theme files
+	foreach($data['page'] as $k => $v){
+		
+		$path = pagelayer_cleanpath($pagelayer_theme_path.'/data/page/'.$k);
+		
+		// Does it have the title and slug ?
+		if(empty($v['post_title']) || empty($v['post_name'])){
+			$pl_error[] = 'Something is fishy with this theme as there is no title or slug for '.$k;
+			return false;
+		}
+		
+		// Does the page exist ?
+		if(!file_exists($path) || pagelayer_cleanpath(realpath($path)) != $path){
+			$pl_error[] = 'Something is fishy with this theme';
+			return false;
+		}
+		
+	}
+	
+	$status = empty($_POST['save_as_draft']) ? 'publish' : 'draft';
+	
+	// Now check the pages if it exist in this installation ?
+	foreach($data['page'] as $k => $v){
+		
+		if(!in_array($k, $items['page'])){
+			continue;
+		}
+		
+		$path = pagelayer_cleanpath($pagelayer_theme_path.'/data/page/'.$k);
+		
+		// Is the page there ?
+		$page = get_page_by_path($v['post_name']);
+		//r_print($page);
+			
+		$new_post = array();
+		
+		// It does exist so save the revision IF its the header and footer
+		if(!empty($page) && isset($_POST['overwrite'])){
+			
+			$rev = wp_save_post_revision($page->ID);
+			
+			$new_post['ID'] = $page->ID;
+			
+		}
+			
+		// Make an array
+		$new_post['post_content'] = file_get_contents($path);
+		$new_post['post_title'] = $v['post_title'];
+		$new_post['post_name'] = $v['post_name'];
+		$new_post['post_type'] = 'page';
+		$new_post['post_status'] = $status;			
+		//r_print($new_post);die();
+		
+		// Now insert / update the post
+		$ret = pagelayer_insert_content($new_post, $err);
+		
+		// Did we save the post ?
+		if(empty($ret)){
+			$pl_error[] = 'Could not update the page '.$v['post_name'];
+			return false;
+		}
+		
+		update_post_meta($ret, 'pagelayer_imported_content', $template_name);
+		
+	}
+	
+	return true;
+	
+}
+
+// The actual function to import the theme
+function pagelayer_import_theme($template_name, $pagelayer_theme_path = ''){
+	
+global $wpdb, $wp_rewrite;	
+global $pagelayer, $pl_error;
+	
+	if(empty($pagelayer_theme_path)){
+		$pagelayer_theme_path = get_stylesheet_directory();
+	}
 	//die($pagelayer_theme_path);
 	
 	// Delete Old Data ?
@@ -344,7 +433,8 @@ global $pagelayer, $pagelayer_theme, $pagelayer_theme_url, $pagelayer_theme_path
 	$pgl = @json_decode($pgl, true);
 	
 	if(empty($pgl['header'])){
-		die('Header list not found. Report to Website Builder Team');
+		$pl_error[] = 'Header list not found. Report to Website Builder Team';
+		return false;
 	}
 	
 	// Check the theme files
@@ -355,13 +445,28 @@ global $pagelayer, $pagelayer_theme, $pagelayer_theme_url, $pagelayer_theme_path
 		
 		// Does the page exist ?
 		if(!file_exists($path) || pagelayer_cleanpath(realpath($path)) != $path){
-			die('Something is fishy with this theme as the template '.$k.' of type '.$v['type'].' was not found');
+			$pl_error[] = 'Something is fishy with this theme as the template '.$k.' of type '.$v['type'].' was not found';
+			return false;
 		}
 		
 	}
 	
 	// Create the menu
-	$menu_id = pagelayer_create_header_menu();
+	if(empty($_POST['no_header_menu'])){
+		$menu_id = pagelayer_create_header_menu($template_name);
+	}else{
+		
+		// Get the first menu that has items if we still can't find a menu.
+		$menus = wp_get_nav_menus();
+		foreach ( $menus as $menu_maybe ) {
+			$menu_items = wp_get_nav_menu_items( $menu_maybe->term_id, array( 'update_post_term_cache' => false ) );
+			if ( $menu_items ) {
+				$menu_id = $menu_maybe->term_id;
+				break;
+			}
+		}
+		
+	}
 	
 	// Check the theme files
 	foreach($pgl as $k => $v){
@@ -395,12 +500,20 @@ global $pagelayer, $pagelayer_theme, $pagelayer_theme_url, $pagelayer_theme_path
 		$new_post['post_status'] = 'publish';
 		$new_post['comment_status'] = 'closed';
 		$new_post['ping_status'] = 'closed';		
-		//r_print($new_post);die();
+		//pagelayer_print($new_post);die();
 			
 		// Lets replace the menu we created
 		if(!is_wp_error($menu_id)){
 			$new_post['post_content'] = preg_replace('/\[pl_wp_menu ([^\]]*)nav_list="(\d*)"([^\]]*)\]/is', '[pl_wp_menu ${1}nav_list="'.$menu_id.'"${3}]', $new_post['post_content']);
+			
+			$GLOBALS['pagelayer_import_menu_id'] = $menu_id;
+			
+			// Also for block format
+			$new_post['post_content'] = preg_replace_callback('/<!--\s+(?P<closer>\/)?sp:pagelayer\/pl_wp_menu\s+(?P<attrs>{(?:(?:[^}]+|}+(?=})|(?!}\s+\/?-->).)*+)?}\s+)?(?P<void>\/)?-->/s', 'pagelayer_handle_wp_menu', $new_post['post_content']);
+			
 		}
+		
+		//pagelayer_print($new_post);die();
 		
 		// Now insert / update the post
 		$ret = pagelayer_insert_content($new_post, $err);
@@ -408,13 +521,14 @@ global $pagelayer, $pagelayer_theme, $pagelayer_theme_url, $pagelayer_theme_path
 		
 		// Did we save the rev ?
 		if(empty($ret)){
-			die('Could not update the Pagelayer Template '.$k);
+			$pl_error[] = 'Could not update the Pagelayer Template '.$k;
+			return false;
 		}
 		
 		// Save our template type
 		update_post_meta($post_id, 'pagelayer_template_type', $v['type']);
 		update_post_meta($post_id, 'pagelayer_template_conditions', $v['conditions']);
-		update_post_meta($post_id, 'pagelayer_imported_content', $new_theme->template);
+		update_post_meta($post_id, 'pagelayer_imported_content', $template_name);
 		
 		// Any conditions having Page IDs that need to be updated ?
 		if(!empty($v['conditions'])){
@@ -439,7 +553,8 @@ global $pagelayer, $pagelayer_theme, $pagelayer_theme_url, $pagelayer_theme_path
 	//r_print($data);die();
 	
 	if(empty($data['page'])){
-		die('Pages list not found. Report to Website Builder Team');
+		$pl_error[] = 'Pages list not found. This is not a proper template !';
+		return false;
 	}
 	
 	// Check the theme files
@@ -449,12 +564,14 @@ global $pagelayer, $pagelayer_theme, $pagelayer_theme_url, $pagelayer_theme_path
 		
 		// Does it have the title and slug ?
 		if(empty($v['post_title']) || empty($v['post_name'])){
-			die('Something is fishy with this theme as there is no title or slug for '.$k);
+			$pl_error[] = 'Something is fishy with this theme as there is no title or slug for '.$k;
+			return false;
 		}
 		
 		// Does the page exist ?
 		if(!file_exists($path) || pagelayer_cleanpath(realpath($path)) != $path){
-			die('Something is fishy with this theme');
+			$pl_error[] = 'Something is fishy with this theme';
+			return false;
 		}
 		
 	}
@@ -492,6 +609,11 @@ global $pagelayer, $pagelayer_theme, $pagelayer_theme_url, $pagelayer_theme_path
 		// Lets replace the menu we created
 		if(!is_wp_error($menu_id)){
 			$new_post['post_content'] = preg_replace('/\[pl_wp_menu ([^\]]*)nav_list="(\d*)"([^\]]*)\]/is', '[pl_wp_menu ${1}nav_list="'.$menu_id.'"${3}]', $new_post['post_content']);
+			
+			$GLOBALS['pagelayer_import_menu_id'] = $menu_id;
+			
+			// Also for block format
+			$new_post['post_content'] = preg_replace_callback('/<!--\s+(?P<closer>\/)?sp:pagelayer\/pl_wp_menu\s+(?P<attrs>{(?:(?:[^}]+|}+(?=})|(?!}\s+\/?-->).)*+)?}\s+)?(?P<void>\/)?-->/s', 'pagelayer_handle_wp_menu', $new_post['post_content']);
 		}
 		
 		// Now insert / update the post
@@ -499,10 +621,11 @@ global $pagelayer, $pagelayer_theme, $pagelayer_theme_url, $pagelayer_theme_path
 		
 		// Did we save the post ?
 		if(empty($ret)){
-			die('Could not update the page '.$v['post_name']);
+			$pl_error[] = 'Could not update the page '.$v['post_name'];
+			return false;
 		}
 		
-		update_post_meta($ret, 'pagelayer_imported_content', $new_theme->template);
+		update_post_meta($ret, 'pagelayer_imported_content', $template_name);
 		
 		$pages_id_map[$v['ID']] = $ret;
 		
@@ -535,10 +658,10 @@ global $pagelayer, $pagelayer_theme, $pagelayer_theme_url, $pagelayer_theme_path
 	}
 	
 	// Save that we have imported the theme
-	update_option('pagelayer_theme_'.get_template().'_imported', time(), true);
+	update_option('pagelayer_theme_'.$template_name.'_imported', time(), true);
 	
 	// Call a function for the theme if they want to execute something
-	$ret = apply_filters('pagelayer_theme_imported', get_template());
+	$ret = apply_filters('pagelayer_theme_imported', $template_name);
 	
 	if(isset($_POST['set_home_page'])){
 		
@@ -575,17 +698,19 @@ global $pagelayer, $pagelayer_theme, $pagelayer_theme_url, $pagelayer_theme_path
 	}
 	
 	// Update the menu
-	pagelayer_update_header_menu($menu_id, $pages_id_map);
+	if(empty($_POST['no_header_menu'])){
+		pagelayer_update_header_menu($menu_id, $pages_id_map);
+	}
 	
 	return true;
 
 }
 
 // Create the menu
-function pagelayer_create_header_menu(){
+function pagelayer_create_header_menu($name){
 		
 	// Create the menu if not exists
-	$menu_name = 'PFX Header Menu';
+	$menu_name = (empty($name) ? 'Pagelayer' : $name).' Header Menu';
 	$menu_exists = wp_get_nav_menu_object($menu_name);
 	
 	// If there is no menu we will need to add it
@@ -595,6 +720,10 @@ function pagelayer_create_header_menu(){
 	
 	// Insert the Menu
 	$menu_id = wp_create_nav_menu($menu_name);
+	
+	if(!is_int($menu_id)){
+		return false;
+	}
 	
 	return $menu_id;
 
@@ -655,4 +784,9 @@ function pagelayer_update_header_menu($menu_id, $pages){
 	$options['auto_add'][] = $menu_id;
 	update_option('nav_menu_options', $options);
 	
+}
+
+// Callback for menu replacement	
+function pagelayer_handle_wp_menu($matches){
+	return preg_replace('/nav_list"\s*:\s*"(\d*)"/is', 'nav_list":"'.$GLOBALS['pagelayer_import_menu_id'].'"', $matches[0]);
 }

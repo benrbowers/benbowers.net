@@ -214,7 +214,7 @@ function pagelayer_is_checked($post){
 	return false;
 }
 
-// Reoort an error
+// Report an error
 function pagelayer_report_error($error = array()){
 
 	if(empty($error)){
@@ -386,7 +386,20 @@ function pagelayer_supported_type($type){
 }
 
 function pagelayer_shortlink($id){
-	$link = wp_get_shortlink($id);
+	
+	$post = get_post( $id );
+	if ( ! empty( $post->ID ) ) {
+		$post_id = $post->ID;
+	}
+	
+	$post_type = get_post_type_object( $post->post_type );
+ 
+	if ( 'page' === $post->post_type && get_option( 'page_on_front' ) == $post->ID && 'page' === get_option( 'show_on_front' ) ) {
+		$link = home_url( '/' );
+	} elseif ( $post_type->public ) {
+		$link = home_url( '?p=' . $post_id );
+	}
+	
 	$link .= substr_count($link, '?') > 0 ? '' : '?';
 	return $link;
 }
@@ -403,6 +416,18 @@ function pagelayer_is_live(){
 
 	// Are we seeing the post ?
 	if(!isset($post) || !isset($post->ID) || empty($post->ID)){
+		return false;
+	}
+	
+	$parID = $post->ID;
+	
+	// Is revision?
+	if(wp_is_post_revision($post->ID) ){
+		$parID = wp_get_post_parent_id($post->ID);
+	}
+	
+	// Are you allowed to edit ?
+	if(!pagelayer_user_can_edit($parID)){
 		return false;
 	}
 
@@ -430,6 +455,26 @@ function pagelayer_is_live_iframe(){
 
 	return false;
 
+}
+
+// Are we editing a live template
+function pagelayer_is_live_template($post = []){
+
+	// Are we seeing the post ?
+	if(!pagelayer_is_live()){
+		return false;
+	}
+	
+	if(!$post){
+		$post = $GLOBALS['post'];
+	}
+	
+	if($post->post_type == 'pagelayer-template'){
+		return true;
+	}
+	
+	return false;
+	
 }
 
 // Can the current user edit the post ?
@@ -526,17 +571,25 @@ function pagelayer_memory_limit($mb){
 
 }
 
+// Pagelayer the content
+function pagelayer_the_content($content){
+	$content = do_blocks( $content );
+	$content = do_shortcode( $content );
+	return $content;	
+}
+
 // Loads the shortcodes
 function pagelayer_load_shortcodes(){
 	global $pagelayer;
 	
-	pagelayer_memory_limit(128);
-
-	include_once(PAGELAYER_DIR.'/main/shortcode_functions.php');
-	if(defined('PAGELAYER_PREMIUM')){
-		include_once(PAGELAYER_DIR.'/main/premium_functions.php');
+	if(!empty($pagelayer->shortcode_loaded)){
+		return;
 	}
-	include_once(PAGELAYER_DIR.'/main/shortcodes.php');
+	
+	pagelayer_memory_limit(128);
+	
+	// We have loaded
+	$pagelayer->shortcode_loaded = 1;
 
 	// pQuery
 	include_once(PAGELAYER_DIR.'/lib/pquery/IQuery.php');
@@ -547,11 +600,23 @@ function pagelayer_load_shortcodes(){
 	include_once(PAGELAYER_DIR.'/lib/pquery/gan_selector_html.php');
 	include_once(PAGELAYER_DIR.'/lib/pquery/gan_xml2array.php');
 	include_once(PAGELAYER_DIR.'/lib/pquery/pQuery.php');
+
+	include_once(PAGELAYER_DIR.'/main/shortcode_functions.php');
+	if(defined('PAGELAYER_PREMIUM')){
+		include_once(PAGELAYER_DIR.'/main/freemium_functions.php');
+		include_once(PAGELAYER_DIR.'/main/premium_functions.php');
+	}
+	include_once(PAGELAYER_DIR.'/main/shortcodes.php');
 	
 	// Apply filter to load custom widgets
 	do_action('pagelayer_load_custom_widgets');
+	
+	// Render Pagelayer element by blocks
+	add_action('pre_render_block', 'pagelayer_render_blocks', 10, 2);
+	
+	// Add global widget data
 	if(defined('PAGELAYER_PREMIUM')){
-		// Add global widget data
+		
 		// Get global widget templates id by type	
 		$args = [
 			'post_type' => $pagelayer->builder['name'],
@@ -577,16 +642,7 @@ function pagelayer_load_shortcodes(){
 			$global_data = [];
 			$global_data['post_id'] = $template->ID;
 			$global_data['title'] = $template->post_title;
-			
-			$tag = '';
-			
-			// Get content
-			if (preg_match_all( '/' . get_shortcode_regex() . '/s', $template->post_content, $matches, PREG_SET_ORDER ) ) {
-				$tag = $matches[0][2]; 				
-			}
-			
-			$global_data['tag'] = $tag;
-			$global_data['$'] = do_shortcode($template->post_content);			
+			$global_data['$'] = pagelayer_the_content($template->post_content);			
 			$global_widgets[$pagelayer_template_type][$template->ID] = $global_data;
 
 		}
@@ -601,23 +657,19 @@ function pagelayer_load_shortcodes(){
 function pagelayer_add_shortcode($tag, $params = array()){
 
 	global $pagelayer;
-
-	// Is there a handler function ?
-	if(!empty($params['func'])){
 		
-		if($tag == 'pl_row'){
-			$inner_tag = 'pl_inner_row';
-			add_shortcode($inner_tag, 'pagelayer_render_shortcode');
-		}
-		
-		if($tag == 'pl_col'){
-			$inner_tag = 'pl_inner_col';
-			add_shortcode($inner_tag, 'pagelayer_render_shortcode');
-		}
-		
-		add_shortcode($tag, 'pagelayer_render_shortcode');//$params['func']);
-		//unset($params['func']);
+	if($tag == 'pl_row'){
+		$inner_tag = 'pl_inner_row';
+		add_shortcode($inner_tag, 'pagelayer_render_shortcode');
 	}
+	
+	if($tag == 'pl_col'){
+		$inner_tag = 'pl_inner_col';
+		add_shortcode($inner_tag, 'pagelayer_render_shortcode');
+	}
+	
+	add_shortcode($tag, 'pagelayer_render_shortcode');//$params['func']);
+	//unset($params['func']);
 
 	// Is there a group ?
 	if(empty($params['group'])){
@@ -680,6 +732,59 @@ function pagelayer_add_shortcode($tag, $params = array()){
 	$pagelayer->shortcodes[$tag] = $params;
 	$pagelayer->groups[$params['group']][] = $tag;
 
+}
+
+// Add a freemium shortcode i.e. available for render, but not to drag or edit 
+function pagelayer_freemium_shortcode($tag, $params = array()){
+
+	// If we are the free version, we just allow render and some edits
+	if(!defined('PAGELAYER_PREMIUM')){
+	
+		$params['not_visible'] = 1;
+		$params['freemium'] = 1;
+		
+		$cats = empty($params['styles']) ? array() : $params['styles'];
+	
+		if(!empty($params['settings'])){
+			$cats = array_merge($cats, $params['settings']);
+		}
+		
+		$cats['params'] = $params['name'];
+		//pagelayer_print($cats);
+		
+		foreach($cats as $k => $v){
+			if(empty($params[$k])) continue;
+			
+			foreach($params[$k] as $kk => $vv){
+			
+				if(empty($params[$k][$kk]['np'])){
+					$params[$k][$kk]['pro'] = 1;
+				}
+				
+			}
+			
+		}
+		
+	}
+	
+	return pagelayer_add_shortcode($tag, $params);
+}
+
+// Returns the permalink values
+function pagelayer_permalink($id){
+	
+	if(is_numeric($id)){
+		$id = (int) @$id;
+		$perma = get_permalink($id);
+		
+		if(!empty($perma)){
+			$id = $perma;
+		}
+	}
+	
+	$id = apply_filters('pagelayer_permalink', $id);
+	
+	return $id;
 }
 
 // Returns the Image values
@@ -747,6 +852,10 @@ function pagelayer_image($id){
 	$ret['caption'] = @$caption;
 	
 	$ret = apply_filters('pagelayer_image', $ret);
+	
+	if(pagelayer_is_default_img($ret['url'])){
+		$ret['no-image-set'] = 1;
+	}
 
 	return $ret;
 
@@ -763,6 +872,17 @@ function pagelayer_is_external_img($img = ''){
 		return true;
 	}
 
+	return false;
+
+}
+
+// Checks if the given parameter is the default image
+function pagelayer_is_default_img($img){
+	
+	if($img == PAGELAYER_URL.'/images/default-image.png'){
+		return true;
+	}
+	
 	return false;
 
 }
@@ -888,7 +1008,8 @@ function pagelayer_escapeHTML($str){
 		'>' => '&gt;',
 		'"' => '&quot;',
 		//'&' => '&amp;',
-		'\'' => '&#39;'
+		'\'' => '&#39;',
+		'\\' => '&#92;'
 	];
 	
 	$str = str_replace(array_keys($replace), array_values($replace), $str);
@@ -906,7 +1027,8 @@ function pagelayer_unescapeHTML($str){
 		'gt' => '>',
 		'quot' => '"',
 		//'amp' => '&',
-		'#39' => '\''
+		'#39' => '\'',
+		'#92' => '\\'
 	];
 	
 	foreach($replace as $k => $v){
@@ -952,6 +1074,62 @@ function pagelayer_xss_content($data){
 	
 	return;
 
+}
+
+function pagelayer_getting_started_notice(){
+	
+	// Is Sitepad setup done?
+	$setup_done = get_option('sp_setup_done');
+	
+	if(defined('SITEPAD') && empty($setup_done)){
+		return;
+	}
+	
+	// If SitePad used custom BRAND SM
+	if(defined('BRAND_SM_CUSTOM')){
+		return;
+	}
+	
+	// Are we to disable the promo
+	if(isset($_GET['pagelayer-getting-started']) && (int)$_GET['pagelayer-getting-started'] == 0){
+		update_option('pagelayer_getting_started', time());
+		die('DONE');
+	}
+	
+	echo '
+<script type="application/javascript">
+jQuery(document).ready(function(){
+	jQuery("#pagelayer-getting-started-notice").click(function(e){
+		
+		if(jQuery(e.target).hasClass("notice-dismiss")){
+			var data;
+			jQuery("#pagelayer-getting-started-notice").hide();
+			// Save this preference
+			jQuery.post("'.admin_url('?pagelayer-getting-started=0').'", data, function(response) {
+				//alert(response);
+			});
+			return false;
+		}
+		
+	});
+});
+</script>
+
+	<div id="pagelayer-getting-started-notice" class="notice notice-success is-dismissible">
+		<p style="font-size: 14px; font-weight: 600">';
+		if(defined('SITEPAD')){
+		
+			echo '<a href="'.BRAND_SM_URL.'"><img src="'.BRAND_SM_LOGO .'" style="vertical-align: middle; margin:0px 10px" width="24" /></a>'.__('Thanks for choosing '.BRAND_SM .'. We recommend that you see the short and sweet <a href="'.admin_url('admin.php?page=pagelayer_getting_started').'">Getting Started Video</a> to know the basics of '.BRAND_SM.'.');
+			
+		}else{
+		
+			echo '<a href="'.PAGELAYER_WWW_URL.'"><img src="'.PAGELAYER_URL.'/images/pagelayer-logo-256.png" style="vertical-align: middle; margin:0px 10px" width="24" /></a>'.__('Thanks for choosing Pagelayer. We recommend that you see the short and sweet <a href="'.admin_url('admin.php?page=pagelayer_getting_started').'">Getting Started Video</a> to know the basics of Pagelayer.', 'pagelayer');
+		
+		}
+		
+	echo '</p>
+	</div>';
+	
 }
 
 // Show promo notice on dashboard
@@ -1088,6 +1266,61 @@ function pagelayer_maybe_promo($opts){
 		update_option($opt_name, time() + ($opts['interval'] * 86400));
 		die('DONE');
 	}
+	
+}
+
+// Show the Pro notice
+function pagelayer_show_pro_notice(){
+	
+	if(defined('PAGELAYER_PREMIUM')){
+		return;
+	}
+	
+	echo '<div class="pagelayer-notice pagelayer-notice-info">'.__('This feature is a part of <a href="'.PAGELAYER_PRO_URL.'" target="_blank">Pagelayer Pro</a>. You will need to purchase <a href="'.PAGELAYER_PRO_URL.'" target="_blank">Pagelayer Pro</a> to use this feature.').'</div>';
+	
+}
+
+// Show the Pro Div
+function pagelayer_show_pro_div($head = '', $message = '', $admin_css = 1){
+	
+	if(defined('PAGELAYER_PREMIUM')){
+		return;
+	}
+
+	if(basename(get_template_directory()) == 'popularfx'){
+		$pro_url = 'https://popularfx.com/pricing?from=pagelayer-plugin';
+		$pro_txt = 'PopularFX Pro';
+	}else{
+		$pro_url = PAGELAYER_PRO_URL;
+		$pro_txt = 'Pagelayer Pro';
+	}
+	
+	if(!empty($admin_css)){
+		wp_enqueue_style( 'pagelayer-admin', PAGELAYER_CSS.'/pagelayer-admin.css', array(), PAGELAYER_VERSION);
+	}
+	
+	echo '<div class="pagelayer-pro-div">';
+	
+	if(!empty($head)){
+		echo '<h1 class="pagelayer-pro-head">'.$head.'</h1>';
+	}
+	
+	echo '<div class="pagelayer-pro-message">';
+	
+	if(empty($message)){
+		
+		echo __('This feature is a part of <a href="'.$pro_url.'" target="_blank">'.$pro_txt.'</a>. You will need to purchase <a href="'.$pro_url.'" target="_blank">'.$pro_txt.'</a> to use this feature.');
+	
+	}else{
+		
+		echo $message;
+		echo ' '.__('This feature is a part of <a href="'.$pro_url.'" target="_blank">'.$pro_txt.'</a>.');
+		
+	}
+	
+	echo '</div>
+	<center><a class="button button-pagelayer" href="'.$pro_url.'" target="_blank">Get '.$pro_txt.'</a></center>
+	</div>';
 	
 }
 
@@ -1319,8 +1552,8 @@ function pagelayer_posts($params, $args = []){
 				<div class="pagelayer-wposts-featured">';
 		$data .= '<a href="'. get_the_permalink() .'">';
 		
-		if(!empty($params['show_thumb']) && has_post_thumbnail( $postsquery->ID )){
-			$data .= '<div class="pagelayer-wposts-thumb"'.(has_post_thumbnail() ? ' style="background:url('.get_the_post_thumbnail_url($postsquery->ID,$params['thumb_size']).')"' : '').'></div>';
+		if(!empty($params['show_thumb'])){
+			$data .= '<div class="pagelayer-wposts-thumb" style="background:url('.(has_post_thumbnail($postsquery->ID) ? get_the_post_thumbnail_url($postsquery->ID, $params['thumb_size']) : PAGELAYER_URL.'/images/no_screenshot.png').')"></div>';
 		}
 		/* if($params['show_thumb'] && has_post_thumbnail( $postsquery->ID )){
 			$data .= get_the_post_thumbnail_url($postsquery->ID,$params['thumb_size']);
@@ -1335,22 +1568,28 @@ function pagelayer_posts($params, $args = []){
 		$data .= '<div class="pagelayer-wposts-meta">';
 		$sep = '';
 		if(!empty($params['meta_sep'])){
-			$sep = '<b class="pagelayer-wposts-sep">'.$params['meta_sep'].'</b>';
+			$sep = ' <b class="pagelayer-wposts-sep">'.$params['meta_sep'].'</b> ';
 		}
 		if(!empty($params['author'])){
 			$data .= '<span class="pagelayer-wposts-author">By <a class="pagelayer-wposts-author-url" href="'.esc_url(get_author_posts_url(get_the_author_meta('ID'))).'">'.esc_html(get_the_author()).'</a></span>'.$sep;
 		}
 		if(!empty($params['date'])){
-			$data .= '<span class="pagelayer-wposts-date"><time class="pagelayer-wposts-entry-date published updated" datetime="'.get_the_date('c').'"><span class="date-d">'.get_the_date('j').'</span><span class="date-my">'.get_the_date('M, y').'</span></time></span>'.$sep;
+			$data .= '<span class="pagelayer-wposts-date"><time class="pagelayer-wposts-entry-date published updated" datetime="'.get_the_date('c').'"><span class="date-d">'.get_the_date('j').'</span> <span class="date-my">'.get_the_date('M, y').'</span></time></span>'.$sep;
 		}
+		
 		if(!empty($params['category'])){
 			$category = get_the_category();
 			$singlecategory = '';
 			foreach( $category as $cat ){
 				$singlecategory .= '<a href="' . get_tag_link( $cat->term_id ) . '">'. $cat->name .'</a>';
 			}
-			$data .= '<span class="pagelayer-wposts-category">' . $singlecategory . '</span>'.$sep;
+			
+			if(!empty($singlecategory)){
+				$data .= '<span class="pagelayer-wposts-category">' . $singlecategory . '</span>'.$sep;
+			}
+			
 		}
+		
 		if(!empty($params['tags'])){
 			$tags = get_the_tags();
 			$singletag = '';
@@ -1364,8 +1603,9 @@ function pagelayer_posts($params, $args = []){
 			}
 			
 		}
-		if(!empty($params['comments'])){
-			$data .= '<span class="pagelayer-wposts-comments"><i class="far fa-comment"></i><a href="' . esc_url( get_permalink() ) . '">' . esc_html(get_comments_number()) . '</a></span>'.$sep;
+		
+		if(!empty($params['comments']) && comments_open($postsquery->ID)){
+			$data .= '<span class="pagelayer-wposts-comments"><a href="' . esc_url( get_permalink() ) . '">' . esc_html(get_comments_number()).' '.__pl('comments').'</a></span>'.$sep;
 		}
 		
 		$data .= '</div>';
@@ -1373,9 +1613,9 @@ function pagelayer_posts($params, $args = []){
 		if(!empty($params['show_content'])){
 			$data .= '<div class="pagelayer-wposts-excerpt">';
 			if($params['show_content'] == 'excerpt'){	
-				$data .= do_shortcode(get_the_excerpt());
+				$data .= pagelayer_the_content(get_the_excerpt());
 			}elseif($params['show_content'] == 'full'){
-				$data .= do_shortcode(get_the_content());	
+				$data .= pagelayer_the_content(get_the_content());	
 			}
 			$data .= '</div>';
 		}
@@ -1504,7 +1744,7 @@ function pagelayer_posts_slider($params){
 			if($params['post']['show_excerpt'] == "true"){
 				if(has_excerpt()){	
 					$excerpt = get_the_excerpt();
-					$data .= do_shortcode($excerpt);
+					$data .= pagelayer_the_content($excerpt);
 				}
 			}
 			$data .= '</div>';
@@ -1700,6 +1940,11 @@ function pagelayer_export_content($content){
 	$theme_url = preg_replace('/http(s?):\/\//is', '', get_stylesheet_directory_uri());
 	
 	$content = preg_replace('/http(s?):\/\/'.preg_quote($theme_url, '/').'/is', '{{theme_url}}', $content);
+	$content = str_replace('<!-- wp:pagelayer', '<!-- sp:pagelayer', $content);
+	$content = str_replace('<!-- /wp:pagelayer', '<!-- /sp:pagelayer', $content);
+	
+	// Export the media as well
+	$content = pagelayer_export_media($content);
 	
 	// Apply a filter
 	$content = apply_filters('pagelayer_export_content', $content);
@@ -1708,8 +1953,84 @@ function pagelayer_export_content($content){
 	
 }
 
+function pagelayer_export_media($content){
+	
+	global $pagelayer;
+	
+	$theme_dir = get_stylesheet_directory();
+	$image_dir = $theme_dir.'/images/';
+	
+	// Loop thru all shortcodes
+	foreach($pagelayer->shortcodes as $tag => $vvv){
+	
+		// Lets create the CSS, Classes, Attr. Also clean the dependent atts
+		foreach($pagelayer->tabs as $tab){
+			
+			if(empty($pagelayer->shortcodes[$tag][$tab])){
+				continue;
+			}
+			
+			foreach($pagelayer->shortcodes[$tag][$tab] as $section => $Lsection){
+				
+				$props = empty($pagelayer->shortcodes[$tag][$section]) ? @$pagelayer->styles[$section] : @$pagelayer->shortcodes[$tag][$section];
+				
+				//echo $tab.' - '.$section.' - <br>';
+				
+				if(empty($props)){
+					continue;
+				}
+				
+				// Loop all props
+				foreach($props as $prop => $param){
+					
+					// Load any attachment values
+					if(!in_array($param['type'], ['image', 'video', 'audio', 'media'])){
+						continue;
+					}
+					
+					$pattern = '/\['.$tag.'([^\]]*)'.$prop.'="(\d*)"([^\]]*)\]/is';
+					
+					// Is there a match ?
+					if(!preg_match($pattern, $content, $matches)){
+						continue;					
+					}
+					
+					//pagelayer_print($matches);die();
+					
+					// Get the file path
+					$file = get_attached_file($matches[2]);
+					
+					if(empty($file) || !file_exists($file)){
+						continue;
+					}
+					
+					// Replace the text
+					$content = str_replace($matches[0], '['.$tag.$matches[1].$prop.'="{{theme_url}}/images/'.basename($file).'"'.$matches[3].']', $content);
+					
+					//echo $content;
+					
+					// Copy the file
+					copy($file, $image_dir.basename($file));
+					
+					//pagelayer_print($file);
+					//die();
+					
+				}
+				
+			}
+		
+		}
+	
+	}
+	
+	return $content;
+	
+}
+
 // Insert a post which is a Pagelayer Post
 function pagelayer_insert_content($post, &$ret){
+	
+	$post = apply_filters('pagelayer_start_insert_content', $post);
 	
 	// Replace Vars
 	$template_vars = pagelayer_template_vars();
@@ -1718,10 +2039,17 @@ function pagelayer_insert_content($post, &$ret){
 		$post['post_content'] = str_replace($key, $val, $post['post_content']);
 	}
 	
+	if(defined('PAGELAYER_BLOCK_PREFIX') && PAGELAYER_BLOCK_PREFIX == 'wp'){
+		$post['post_content'] = str_replace('<!-- sp:pagelayer', '<!-- wp:pagelayer', $post['post_content']);
+		$post['post_content'] = str_replace('<!-- /sp:pagelayer', '<!-- /wp:pagelayer', $post['post_content']);
+	}
+
 	//pagelayer_print($post);die();
 	
 	// Add slashes for safe insert
 	$post['post_content'] = wp_slash($post['post_content']);
+	
+	$post = apply_filters('pagelayer_pre_insert_content', $post);
 	
 	// Now insert / update the post
 	$ret = wp_insert_post($post);
@@ -2214,6 +2542,12 @@ function pagelayer_captcha_verify(){
 	}
 	
 	return false;
+}
+
+
+function pagelayer_enable_giver(){
+	global $pagelayer;
+	return (!empty($pagelayer->settings['enable_giver']) && $pagelayer->settings['enable_giver'] == 1) || defined('SITEPAD');
 }
 
 function pagelayer_load_font_options(){

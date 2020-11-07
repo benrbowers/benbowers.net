@@ -7,8 +7,8 @@
  * @package pQuery
  */
 
-use pQuery\Html5Parser;
-use pQuery\HtmlFormatter;
+use pagelayerQuery\Html5Parser;
+use pagelayerQuery\HtmlFormatter;
 
 /**
  * Returns HTML DOM from string

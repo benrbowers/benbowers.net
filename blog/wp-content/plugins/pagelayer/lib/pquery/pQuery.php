@@ -7,12 +7,12 @@
  * @package pQuery
  */
 
-use pQuery\IQuery;
+use pagelayerQuery\IQuery;
 
 /**
  * A jQuery-like object for php.
  */
-class pQuery implements ArrayAccess, IteratorAggregate, IQuery {
+class pagelayerQuery implements ArrayAccess, IteratorAggregate, IQuery {
     /// Properties ///
 
     /**
@@ -85,12 +85,12 @@ class pQuery implements ArrayAccess, IteratorAggregate, IQuery {
     /**
      * Format/beautify a DOM.
      *
-     * @param pQuery\DomNode $dom The dom to format.
-     * @param array $options Extra formatting options. See {@link pQuery\HtmlFormatter::$options}.
+     * @param pagelayerQuery\DomNode $dom The dom to format.
+     * @param array $options Extra formatting options. See {@link pagelayerQuery\HtmlFormatter::$options}.
      * @return bool Returns `true` on sucess and `false` on failure.
      */
 //    public static function format($dom, $options = array()) {
-//        $formatter = new pQuery\HtmlFormatter($options);
+//        $formatter = new pagelayerQuery\HtmlFormatter($options);
 //        return $formatter->format($dom);
 //    }
 
@@ -147,7 +147,7 @@ class pQuery implements ArrayAccess, IteratorAggregate, IQuery {
      *
      * @param string $path The path to the url.
      * @param resource $context A context suitable to be passed into {@link file_get_contents}
-     * @return pQuery\DomNode Returns the root dom node for the html file.
+     * @return pagelayerQuery\DomNode Returns the root dom node for the html file.
      */
     public static function parseFile($path, $context = null) {
         $html_str = file_get_contents($path, false, $context);
@@ -158,10 +158,10 @@ class pQuery implements ArrayAccess, IteratorAggregate, IQuery {
      * Query a string of html.
      *
      * @param string $html
-     * @return pQuery\DomNode Returns the root dom node for the html string.
+     * @return pagelayerQuery\DomNode Returns the root dom node for the html string.
      */
     public static function parseStr($html) {
-        $parser = new pQuery\Html5Parser($html);
+        $parser = new pagelayerQuery\Html5Parser($html);
         return $parser->root;
     }
 

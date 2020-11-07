@@ -24,10 +24,47 @@ if(!defined('PAGELAYER_VERSION')) {
 	exit('Hacking Attempt !');
 }
 
+// Is there a block ?
+function pagelayer_render_blocks($pre_render, $parsed_block){
+	
+	global $pagelayer;
+	
+	if(empty($parsed_block)){
+		return $pre_render;
+	}
+	
+	$block_name = $parsed_block['blockName'];
+	$tag = '';
+	$content = $parsed_block['innerHTML'];
+	$inner_blocks = $parsed_block['innerBlocks'];
+	$atts = $parsed_block['attrs'];
+	$atts['is_not_sc'] = 1;
+	
+	if ( is_string( $block_name ) && 0 === strpos( $block_name, 'pagelayer/' ) ) {
+		$tag = substr( $block_name, 10 );
+	}
+	
+	$allowed_tags = ['pl_inner_row', 'pl_inner_col'];
+	
+	if( (empty($tag) || !array_key_exists($tag, $pagelayer->shortcodes) ) && ! in_array( $tag, $allowed_tags) ){
+		return $pre_render;
+	}
+	
+	return pagelayer_render_shortcode($atts, $content, $tag, $inner_blocks);
+}
+
 // Is there a tag ?
-function pagelayer_render_shortcode($atts, $content = '', $tag = ''){
+function pagelayer_render_shortcode($atts, $content = '', $tag = '', $inner_blocks = array()){
 
 	global $pagelayer;
+	
+	$is_block = 0;
+	
+	// Is block ?
+	if(!empty($atts['is_not_sc'])){
+		$is_block = 1;
+		unset($atts['is_not_sc']);
+	}
 	
 	$_tag = $class = $tag;
 	$final_tag = $tag;
@@ -66,6 +103,11 @@ function pagelayer_render_shortcode($atts, $content = '', $tag = ''){
 	// Is there any function ?
 	$func = @$pagelayer->shortcodes[$tag]['func'];
 	
+	// If not, we will search for a default func if prefix of tag is pl_
+	if(empty($func) && substr($tag, 0, 3) == 'pl_'){
+		$func = 'pagelayer_sc_'.substr($tag, 3);
+	}
+	
 	// Create the element array. NOTE : This is similar to the JS el and is temporary
 	$el = [];
 	$el['atts'] = $atts;
@@ -85,7 +127,7 @@ function pagelayer_render_shortcode($atts, $content = '', $tag = ''){
 	
 	$innerHTML = @$pagelayer->shortcodes[$tag]['innerHTML'];
 	if(!empty($innerHTML) && !empty($content)){
-		$_content = htmlentities($content, ENT_HTML5);
+		$_content = str_replace('&', '&amp;', $content);
 		$el['oAtts'][$innerHTML] = $_content;
 		$el['atts'][$innerHTML] = $_content;
 	}
@@ -220,6 +262,11 @@ function pagelayer_render_shortcode($atts, $content = '', $tag = ''){
 					
 				}
 				
+				// Load permalink values
+				if($param['type'] == 'link'){
+					$el['tmp'][$prop] = pagelayer_permalink($el['atts'][$prop]);
+				}
+				
 				// Handle the AddClasses
 				if(!empty($param['addClass']) && !empty($el['atts'][$prop])){
 					
@@ -253,8 +300,8 @@ function pagelayer_render_shortcode($atts, $content = '', $tag = ''){
 				}				
 				
 				$modes = [
-					'desktop' => '', 
-					'tablet' => '_tablet', 
+					'desktop' => '',
+					'tablet' => '_tablet',
 					'mobile' => '_mobile'
 				];
 				
@@ -295,14 +342,14 @@ function pagelayer_render_shortcode($atts, $content = '', $tag = ''){
 								$ender = '}';
 							}
 							
-							if(!empty($selector)){
 							// Make the CSS
-								$el['css'][] = $selector.'{'.pagelayer_css_render($v, $el['atts'][$M_prop], @$param['sep']).'}'.$ender;
+							if(!empty($selector)){
+								$el['css'][$selector.'{|pl|}'.$ender][] = rtrim( trim( pagelayer_css_render($v, $el['atts'][$M_prop], @$param['sep']) ), ';' );
 							}else{
-								$el['css'][] = pagelayer_parse_el_vars($el['atts'][$M_prop],$el);
+								$el['css'][][] = pagelayer_parse_el_vars($el['atts'][$M_prop],$el);
 							}
 						}
-					
+						
 					}
 					
 				}
@@ -314,16 +361,26 @@ function pagelayer_render_shortcode($atts, $content = '', $tag = ''){
 					if($param['type'] == 'typography' && !empty($el['atts'][$M_prop])){
 						$val = explode(',', $el['atts'][$M_prop]);
 						
-						if(!empty($val[0]) && !in_array($val[0], $pagelayer->runtime_fonts)){
-							$pagelayer->runtime_fonts[] = $val[0];
+						if(!empty($val[0])){
+							$font_weight = empty($val[3]) ? 400 : $val[3];
+							$font_style = !empty($val[2]) && in_array($val[2], ['italic', 'oblique']) ? 'i' : '';
+							$pagelayer->runtime_fonts[$val[0]][$font_weight.$font_style] = $font_weight.$font_style;
 							//pagelayer_print($pagelayer->runtime_fonts);
 						}
 					}
 					
-					if($param['type'] == 'font_family' && !empty($el['atts'][$M_prop])){
+					if($prop == 'font_family' && !empty($el['atts'][$M_prop])){
 						$val = $el['atts'][$M_prop];
-						if(!empty($val) && !in_array($val, $pagelayer->runtime_fonts)){
-							$pagelayer->runtime_fonts[] = $val;
+						if(!empty($val)){
+							$font_weight = empty($el['atts']['font_weight'.$mv]) ? @$el['atts']['font_weight'] : $el['atts']['font_weight'.$mv];
+							$font_weight = empty($font_weight) ? 400 : $font_weight;
+							
+							$font_style = empty($el['atts']['font_style'.$mv]) ? @$el['atts']['font_style'] : $el['atts']['font_style'.$mv];
+							$font_style = empty($font_style) ? 'normal' : $font_style;							
+							$font_style = in_array($font_style, ['italic', 'oblique']) ? 'i' : '';
+							
+							$pagelayer->runtime_fonts[$val][$font_weight.$font_style] = $font_weight.$font_style;
+							
 						}
 					}
 				}
@@ -342,7 +399,7 @@ function pagelayer_render_shortcode($atts, $content = '', $tag = ''){
 	
 	// Create the default atts and tmp atts
 	if(pagelayer_is_live()){
-		pagelayer_create_sc($el);
+		pagelayer_create_sc($el, $is_block);
 	}
 	
 	$div = '<div pagelayer-id="'.$el['id'].'">
@@ -354,7 +411,7 @@ function pagelayer_render_shortcode($atts, $content = '', $tag = ''){
 	if(!empty($pagelayer->shortcodes[$tag]['html'])){
 		
 		// Create the HTML object
-		$node = pQuery::parseStr($pagelayer->shortcodes[$tag]['html']);
+		$node = pagelayerQuery::parseStr($pagelayer->shortcodes[$tag]['html']);
 		
 		// Remove the if-ext
 		foreach($node('[if-ext]') as $v){
@@ -431,7 +488,7 @@ function pagelayer_render_shortcode($atts, $content = '', $tag = ''){
 	if(!empty($el['classes']) || !empty($el['attr']) || !empty($el['atts']['ele_attributes'])){
 	
 		// Create the HTML object
-		$node = pQuery::parseStr($div);
+		$node = pagelayerQuery::parseStr($div);
 		
 		// Add the editable values
 		if(!empty($el['edit']) && pagelayer_is_live()){
@@ -521,22 +578,40 @@ function pagelayer_render_shortcode($atts, $content = '', $tag = ''){
 	$style = '';
 	if(!empty($el['css'])){
 		
-		$style = '<style pagelayer-style-id="'.$el['id'].'">
-'.implode("\n", pagelayer_parse_vars($el['css'], $el)).'
-</style>';
+		$style = '<style pagelayer-style-id="'.$el['id'].'">';
+		foreach($el['css'] as $ck => $cv){
+			$tck = explode('|pl|', $ck);
+			$csel = !empty($tck[0]) ? $tck[0]: '';
+			$cend = !empty($tck[1]) ? $tck[1]: '';
+			$style .= $csel.implode(';', $cv).$cend."\n";
+		}
+		$style .= '</style>';
+		$style = pagelayer_parse_vars($style, $el);
 	
 		if(!empty($pagelayer->shortcodes[$tag]['overide_css_selector'])){
-			$style = str_replace($el['selector'], $pagelayer->shortcodes[$tag]['overide_css_selector'], $style);
-			$style = str_replace($el['wrap'], $pagelayer->shortcodes[$tag]['overide_css_selector'], $style);
+			$overide_css_selector = pagelayer_parse_el_vars($pagelayer->shortcodes[$tag]['overide_css_selector'], $el);
+			$style = str_replace($el['selector'], $overide_css_selector, $style);
+			$style = str_replace($el['wrap'], $overide_css_selector, $style);
 		}
 		
+		$style = pagelayer_unescapeHTML($style);
 	}
 	
 	$div = str_replace('<style pagelayer-style-id="'.$el['id'].'"></style>', $style, $div);
 	
 	// Is there an inner content which requires a SHORTCODE ?
 	if(!empty($do_shortcode)){
-		$div = str_replace('{{pagelayer_do_shortcode}}', do_shortcode($el['content']), $div);
+		
+		$inner_content = '';
+		if( !empty($inner_blocks) ){
+			foreach($inner_blocks as $inner_block){
+				$inner_content .= render_block($inner_block);
+			}
+		}else{
+			$inner_content .=  do_shortcode($el['content']);
+		}
+		
+		$div = str_replace('{{pagelayer_do_shortcode}}', $inner_content, $div);
 	}
 	
 	// Sanitize the content
@@ -564,7 +639,7 @@ function pagelayer_change_id($content){
 }
 
 // Creates the shortcode and returns a base64 encoded files
-function pagelayer_create_sc(&$el){
+function pagelayer_create_sc(&$el, $is_block = 0){
 	
 	$a = $tmp = array();
 	
@@ -572,6 +647,9 @@ function pagelayer_create_sc(&$el){
 		
 		foreach($el['oAtts'] as $k => $v){
 			$v = str_replace('&', '&amp;', $v);
+			if($is_block){
+				$v = pagelayer_escapeHTML($v);
+			}
 			$el['attr'][] = 'pagelayer-a-'.$k.'="'.$v.'"';
 		}
 		
@@ -582,6 +660,9 @@ function pagelayer_create_sc(&$el){
 		
 		foreach($el['tmp'] as $k => $v){
 			$v = str_replace('&', '&amp;', $v);
+			if($is_block){
+				$v = pagelayer_escapeHTML($v);
+			}
 			$el['attr'][] = 'pagelayer-tmp-'.$k.'="'.$v.'"';
 		}
 		
@@ -603,9 +684,18 @@ function pagelayer_var($var){
 // Replace the variables
 function pagelayer_parse_el_vars($str, &$el){
 	
+	global $pagelayer, $post;
+	
+	// if is 404 then @$post->ID
+	if(!empty( $pagelayer->rendering_template_id ) && @$post->ID != $pagelayer->rendering_template_id){
+		$is_editable = false;
+	}else{
+		$is_editable = true;
+	}
+	
 	$str = str_replace('{{element}}', $el['selector'], $str);
 	$is_live = pagelayer_is_live();
-	if(!empty($is_live)){
+	if(!empty($is_live) && $is_editable){
 		$str = str_replace('{{wrap}}', $el['wrap'], $str);
 	}else{
 		$str = str_replace('{{wrap}}', $el['selector'], $str);
@@ -657,7 +747,7 @@ function pagelayer_css_render($rule, $val, $sep = ','){
 }
 
 // Post Property Handler
-function pagelayer_sc_body(&$el){
+function pagelayer_sc_post_props(&$el){
 	
 	global $post;
 	
@@ -823,7 +913,7 @@ function pagelayer_bg_video(&$el){
 			
 		}else{
 			
-			$el['atts']['vid_src'] = '<video autoplay '.$el['atts']['mute'].$el['atts']['stop_loop'].'>'.
+			$el['atts']['vid_src'] = '<video autoplay playsinline '.$el['atts']['mute'].$el['atts']['stop_loop'].'>'.
 				'<source src="'.$iframe_src.'" type="video/mp4">'.
 			'</video>';
 			
@@ -850,7 +940,7 @@ function pagelayer_sc_image(&$el){
 		
 		// Custom url
 		if($el['atts']['link_type'] == 'custom_url'){
-			$el['atts']['func_link'] = $el['atts']['link'];
+			$el['atts']['func_link'] = @$el['tmp']['link'];
 		}
 		
 		// Link to the media file itself
@@ -903,7 +993,7 @@ function pagelayer_sc_image_slider(&$el){
 		
 		// Any Link ?
 		if(!empty($el['atts']['link_type'])){
-			$link = ($el['atts']['link_type'] == 'media_file' ? $final_urls[$v] : @$el['atts']['link']);
+			$link = ($el['atts']['link_type'] == 'media_file' ? $final_urls[$v] : @$el['tmp']['link']);
 			$li .= '<a href="'.$link.'">';
 		}
 		
@@ -1053,14 +1143,12 @@ function pagelayer_sc_grid_gallery(&$el){
 // Testimonial Handler
 function pagelayer_sc_testimonial(&$el){
 	
+	if(empty($el['atts']['avatar']) || !empty($el['tmp']['avatar-no-image-set'])){
+		$el['atts']['avatar'] = '';
+	}
+	
 	$custom_size = empty($el['atts']['custom_size']) ? '' : @$el['tmp']['avatar-'.$el['atts']['custom_size'].'-url'];
 	$el['atts']['func_image'] = empty($custom_size) ? @$el['tmp']['avatar-url'] : $custom_size;
-	
-	if(!empty($image)){
-		foreach($image as $k => $v){
-			$el['tmp']['avatar-'.$k] = $v;
-		}
-	}
 	
 }
 
@@ -1104,7 +1192,7 @@ function pagelayer_sc_video(&$el){
 function pagelayer_sc_shortcodes(&$el){
 	$is_live = pagelayer_is_live();
 	if(empty($is_live)){
-		$el['tmp']['shortcode'] = do_shortcode($el['atts']['data']);
+		$el['tmp']['shortcode'] = pagelayer_the_content($el['atts']['data']);
 	}
 }
 

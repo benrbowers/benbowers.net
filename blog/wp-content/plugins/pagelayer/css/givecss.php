@@ -22,6 +22,7 @@
 
 // Read the file
 $data = '';
+$data_premium = '';
 $self_path = dirname(__FILE__);
 $files = array(
 		// Admin CSS
@@ -45,6 +46,9 @@ $files = array(
 // What files to give		
 $give = @$_REQUEST['give'];
 
+// Premium
+$premium = @$_REQUEST['premium'];
+
 if(!empty($give)){
 	
 	$give = explode(',', $give);
@@ -53,6 +57,19 @@ if(!empty($give)){
 	foreach($give as $file){
 		if(in_array($file, $files)){
 			$final[md5($file)] = $file;
+		}
+	}
+	
+}
+
+if(!empty($premium)){
+	
+	$premium = explode(',', trim($premium, ','));
+	
+	// Check all files are in the supported list
+	foreach($premium as $file){
+		if(in_array($file, $files)){
+			$final_premium[md5($file)] = $file;
 		}
 	}
 	
@@ -67,6 +84,15 @@ if(empty($final)){
 foreach($final as $k => $v){
 	//echo $k.'<br>';
 	$data .= file_get_contents($self_path.'/'.$v)."\n\n";
+}
+
+if(!empty($final_premium)){
+
+	foreach($final_premium as $k => $v){
+		//echo $k.'<br>';
+		$data_premium .= file_get_contents($self_path.'/'.$v)."\n\n";
+	}
+
 }
 
 // We are zipping if possible
@@ -98,6 +124,17 @@ if (isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) && (@strtotime($_SERVER['HTTP_IF_M
 	
 }
 
-echo $data;
+if(defined('DOING_AJAX') && !defined('SITEPAD')){
+	$data = str_replace('../fonts/', '../wp-content/plugins/'.(basename(dirname(dirname(__FILE__)))).'/fonts/', $data);
+}
 
+echo $data;
+echo $data_premium;
+
+// Write if we are front-end only then
+$dev = dirname(dirname(__FILE__)).'/dev.php';
+if(!empty($_REQUEST['write']) && file_exists($dev)){
+	include_once($dev);
+	write_css();
+}
 

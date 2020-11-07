@@ -1,17 +1,21 @@
 // Lets start
 jQuery(document).ready(function(){
 	
-	var pl_admin_tabs = function(){
+	var pl_admin_tabs = function(sel){
 		jQuery('.nav-tab-wrapper a').click(function(){
 
 			var tEle = jQuery(this);
 			
+			var sel = tEle.attr('tab-class') || 'pagelayer-tab-panel';
+			
 			// Limit effect to the container element.
-			var context = tEle.closest('.nav-tab-wrapper ').parent();
+			var context = tEle.closest('.nav-tab-wrapper').parent().parent();
 			context.find('.nav-tab-wrapper a').removeClass('nav-tab-active');
 			tEle.addClass('nav-tab-active');
-			context.find('.pagelayer-tab-panel').hide();
+			context.find('.'+sel).hide();
 			context.find(tEle.attr('href')).show();
+			
+			return false;
 			
 		});
 
@@ -27,7 +31,8 @@ jQuery(document).ready(function(){
 					active_tab_ele.click();
 				}
 			}else{
-				jEle.find('a').first().click();
+				var first = jEle.find('a').first();
+				first.click();
 			}
 			
 		});

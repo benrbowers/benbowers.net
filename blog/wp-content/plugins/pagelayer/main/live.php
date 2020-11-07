@@ -52,10 +52,16 @@ class PageLayer_LiveEditor{
 		
 		// Enqueue our Editor's JS
 		wp_register_script('pagelayer-editor', admin_url( 'admin-ajax.php?action=pagelayer_givejs' ).'&give=pagelayer-editor.js,widgets.js,'.(defined('PAGELAYER_PREMIUM') ? 'premium.js,' : '').'properties.js,base-64.js,slimscroll.js,vanilla-picker.min.js,trumbowyg.js,trumbowyg.fontfamily.js,trumbowyg-pagelayer.js,pen.js,tlite.min.js&pagelayer_nonce=1&scmd5='.$scmd5, array('jquery'), PAGELAYER_VERSION);
+		
 		wp_enqueue_script('pagelayer-editor');
 
+		$css_url = admin_url('admin-ajax.php?action=pagelayer_givecss&pagelayer_nonce=1&');
+		if(pagelayer_enable_giver()){
+			$css_url = PAGELAYER_CSS.'/givecss.php?';
+		}
+
 		// Enqueue the Editor's CSS
-		wp_register_style('pagelayer-editor', PAGELAYER_CSS.'/givecss.php?give=pagelayer-editor-frontend.css,pen.css'.(defined('PAGELAYER_PREMIUM') ? ',owl.theme.default.min.css,owl.carousel.min.css' : ''), array(), PAGELAYER_VERSION);
+		wp_register_style('pagelayer-editor', $css_url.'give=pagelayer-editor-frontend.css,pen.css'.(defined('PAGELAYER_PREMIUM') ? ',owl.theme.default.min.css,owl.carousel.min.css' : ''), array(), PAGELAYER_VERSION);
 		wp_enqueue_style('pagelayer-editor');
 
 		// Enqueue the DateTime picker CSS
@@ -106,15 +112,22 @@ class PageLayer_LiveEditor{
 		// Get CAPTCHA site key
 		$pagelayer_recaptch_site_key = get_option('pagelayer_google_captcha');
 		
+		$pro_url = defined('POPULARFX_PRO_URL') ? POPULARFX_PRO_URL : PAGELAYER_PRO_URL;
+		$pro_txt = defined('POPULARFX_PRO_URL') ? 'PopularFX Pro' : 'Pagelayer Pro';
+		
 		echo '
 <script type="text/javascript">
 pagelayer_ver = "'.PAGELAYER_VERSION.'";
+pagelayer_block_prefix = "'.PAGELAYER_BLOCK_PREFIX.'";
 pagelayer_pro = '.(int)defined('PAGELAYER_PREMIUM').';
 pagelayer_pro_url = "'.PAGELAYER_PRO_URL.'";
+pagelayer_pro_txt = "'.addslashes('This feature is a part of <a href="'.$pro_url.'" target="_blank">'.$pro_txt.'</a>. You will need purchase <a href="'.$pro_url.'" target="_blank">'.$pro_txt.'</a> to use this feature.').'";
 pagelayer_api_url = "'.PAGELAYER_API.'";
 pagelayer_ajax_url = "'.admin_url( 'admin-ajax.php' ).'?&";
+pagelayer_post_props = "'.admin_url( 'admin.php?page=pagelayer_meta_setting&post=' ).$post->ID.'";
 pagelayer_ajax_nonce = "'.wp_create_nonce('pagelayer_ajax').'";
 pagelayer_media_ajax_nonce = "'.wp_create_nonce('media-form').'";
+pagelayer_internal_linking_nonce = "'.wp_create_nonce('internal-linking').'";
 pagelayer_preview_nonce = "'. wp_create_nonce( 'post_preview_' . $post->ID ).'";
 pagelayer_url = "'.PAGELAYER_URL.'";
 pagelayer_postID = "'.$post->ID.'";
@@ -129,19 +142,81 @@ pagelayer_site_logo = '.json_encode(pagelayer_site_logo()).';
 pagelayer_support_FI = "'. ( current_theme_supports('post-thumbnails') )  .'";	
 pagelayer_editable = ".'.(!empty($pagelayer->template_editor) ? $pagelayer->template_editor : 'pagelayer-editable-area').'";
 pagelayer_recaptch_site_key = "'.(!empty($pagelayer_recaptch_site_key) ? $pagelayer_recaptch_site_key : '').'";
-pagelayer_wp_query = '. json_encode($wp_query->query_vars) .';
 pagelayer_post =  '. @json_encode($_post) .';
 pagelayer_loaded_icons =  '.json_encode(pagelayer_enabled_icons()).';
 pagelayer_social_urls =  '.json_encode(pagelayer_get_social_urls()).';
-pagelayer_shortcodes.pl_post_props.params.post_title.default = "'.pagelayer_escapeHTML($post->post_title).'";
-pagelayer_shortcodes.pl_post_props.params.post_name.default = "'.pagelayer_escapeHTML($post->post_name).'";
-pagelayer_shortcodes.pl_post_props.params.post_status.default = "'.$_post->post_status.'";
 pagelayer_global_widgets = '.json_encode($pagelayer->global_widgets).';
 pagelayer_saved_sections = '.json_encode($pagelayer->saved_sections).';
-pagelayer_global_sections = '.json_encode($pagelayer->global_sections).';
+pagelayer_global_sections = '.json_encode($pagelayer->global_sections).';';
+
+// Detect JS via givejs for better performance
+if(empty($pagelayer->settings['enable_giver'])){
+	echo '
+jQuery(document).ready(function(){	
+	return jQuery.ajax({
+		url: "'.PAGELAYER_JS.'/givejs.php?test=1",
+		type: "GET",
+		dataType: "text",
+		success:function(data){
+			
+			if(data !== "1"){
+				data = -1;
+			}
+			
+			jQuery.ajax({
+				type: "POST",
+				url: pagelayer_ajax_url+"&action=pagelayer_set_jscss_giver",
+				data: { 
+					pagelayer_nonce: pagelayer_ajax_nonce,
+					set : data
+				},
+				error: function(errorThrown){
+					console.log("Error saving giver data");
+					console.log(errorThrown);
+				}
+			});
+			
+		}
+	});
+});
+';
+}
+
+echo '
 </script>';
 
-		
+		echo '<style>
+@media (min-width: '.($pagelayer->settings['tablet_breakpoint'] + 1).'px){
+.pagelayer-hide-desktop{
+display:initial;
+filter:blur(3px);
+}
+.pagelayer-hide-desktop *{
+filter:blur(2px);
+}
+}
+
+@media (max-width: '.$pagelayer->settings['tablet_breakpoint'].'px) and (min-width: '.($pagelayer->settings['mobile_breakpoint'] + 1).'px){
+.pagelayer-hide-tablet{
+display:initial;
+filter:blur(3px);
+}
+.pagelayer-hide-tablet *{
+filter:blur(2px);
+}
+}
+
+@media (max-width: '.$pagelayer->settings['mobile_breakpoint'].'px){
+.pagelayer-hide-mobile{
+display:initial;
+filter:blur(3px);
+}
+
+.pagelayer-hide-mobile *{
+filter:blur(2px);
+}
+}
+</style>';
 		do_action('pagelayer_editor_wp_head');
 
 	}

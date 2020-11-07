@@ -18,7 +18,7 @@ function pagelayer_data(jEle, clean){
 	
 	// Get the data
 	ret.tag = pagelayer_tag(jEle);
-	ret.id = jEle.attr('pagelayer-id');
+	ret.id = pagelayer_id(jEle);;
 	ret.$ = jEle;
 	
 	// Parse the attributes
@@ -243,6 +243,7 @@ function pagelayer_elpd_open(jEle){
 	//pagelayer_elpd.css('left', pagelayer_elpd_pos[0]);
 	//pagelayer_elpd.css('top', pagelayer_elpd_pos[1]);
 	pagelayer_leftbar_tab('pagelayer-elpd');
+	pagelayer.$$('.pagelayer-elpd-tabs').show();
 	pagelayer.$$('.pagelayer-elpd-header').show();
 	pagelayer.$$('.pagelayer-logo').hide();
 	
@@ -362,6 +363,13 @@ function pagelayer_elpd_generate(jEle, holder){
 	if(typeof fn_load == 'function'){
 		fn_load(el, props);
 	}*/
+	
+	// Hide clone and delete options
+	if(!pagelayer_empty(all_props['hide_active'])){
+		pagelayer.$$('.pagelayer-elpd-options').addClass('pagelayer-hidden');
+	}else{
+		pagelayer.$$('.pagelayer-elpd-options').removeClass('pagelayer-hidden');
+	}
 	
 	// Section open close
 	holder.find('>.pagelayer-elpd-section>.pagelayer-elpd-section-name').on('click', function(){
@@ -659,6 +667,14 @@ function pagelayer_elpd_widget_settings(el, sec, onfocus){
 	
 	// Post any existing data
 	var form = sec.find('form');
+  // Archive widget checkbox fix
+	var inputCheckbox = form.find('input[type=checkbox]');
+	for(var i=0; i<inputCheckbox.length; i++){
+		if(inputCheckbox[i].value == 'on'){
+			form.find('input[type=checkbox]')[i].value = 1;
+		}
+	}
+	
 	if(form.length > 0){
 		//console.log(form.serialize());
 		post['values'] = form.serialize();
@@ -758,7 +774,7 @@ function _pagelayer_set_atts(row, val, no_default){
 function _pagelayer_set_tmp_atts(row, suffix, val){
 	var id = row.closest('[pagelayer-element-id]').attr('pagelayer-element-id');
 	var jEle = jQuery('[pagelayer-id='+id+']');
-	pagelayer_set_tmp_atts(jEle, row.attr('pagelayer-elp-name')+'-'+suffix, val);
+	pagelayer_set_tmp_atts(jEle, row.attr('pagelayer-elp-name')+(suffix.length > 0 ? '-'+suffix : ''), val);
 };
 
 // Will clear the attribute but not render
@@ -1218,6 +1234,7 @@ function pagelayer_elp_image(row, prop){
 		// Set to blank and render
 		_pagelayer_set_atts(row, '', true);
 		
+		_pagelayer_set_tmp_atts(row, 'no-image-set', 1);
 		_pagelayer_set_tmp_atts(row, 'url', def);
 		_pagelayer_set_atts(row, def);
 	});
@@ -1234,8 +1251,10 @@ function pagelayer_img_dragAndDrop(dropzoneParent, dropZone, jEle, row){
 		// Checking that the dragged element is a file or not
 		var dt = e.originalEvent.dataTransfer;
 		if(dt.types && (dt.types.indexOf ? dt.types.indexOf('Files') != -1 : dt.types.contains('Files'))){
-			dropZone.show();
-			reset_dragging = true;
+			if(e.originalEvent.dataTransfer.items[0].type.search('image/')!=-1){
+				dropZone.show();
+				reset_dragging = true;				
+			}
 		}
 	});
 	
@@ -1818,19 +1837,135 @@ function pagelayer_elp_editor(row, prop){
 // The Link proprety
 function pagelayer_elp_link(row, prop){
 	
-	// TODO : Implement pagelayer-elp-link-icon
+	var tmp = prop.c['name'];
+	var link = (tmp in prop.el.tmp) ? prop.el.tmp[tmp] : prop.c['val'];
+	var jEle = jQuery('[pagelayer-id='+prop.el.id+']');
+	
 	var div = '<div class="pagelayer-elp-link-div pagelayer-elp-input-icon">'+
-				'<input class="pagelayer-elp-link" type="text" value="'+prop.c['val']+'" />'+
+				'<input class="pagelayer-elp-link" type="text" value="'+link+'" />'+
 				'<i class="pli pli-link pagelayer-elp-link-icon" />'+
+				'<div class="pagelayer-elp-link-list">'+
+				'</div>'+
 			'</div>';
 	
 	row.append(div);
 	
+	var listWrap = row.find('.pagelayer-elp-link-list');
+	var time = null;
+		
+	//Add ID
+	var addID = function(permaID){
+		permaID = permaID || false;
+		
+		var lDiv = row.closest('[pagelayer-elp-name]').find('.pagelayer-elp-label-div');
+		if(permaID){
+			lDiv.append('<span class="pagelayer-elp-link-id">ID : '+permaID+'</span>');
+		}else{
+			lDiv.find('.pagelayer-elp-link-id').remove();
+		}
+	};
+	
+	if(!isNaN(prop.c['val'])){
+		addID(prop.c['val']);
+	}
+	
 	// Set a Link
 	row.find('.pagelayer-elp-link').on('change', function(){
-		_pagelayer_set_atts(row, jQuery(this).val());// Save and Render
-	});
+		
+		// Save and Render
+		_pagelayer_set_tmp_atts(row, '', jQuery(this).val());
+		_pagelayer_set_atts(row, jQuery(this).val());
+		
+		// Remove ID Holder
+		addID();
 
+	});
+	
+	// Set a Link
+	row.find('.pagelayer-elp-link').on('input click', function(e){
+		e.stopPropagation();
+		
+		if(!listWrap.is(':visible')){
+			listWrap.show();
+		}
+		
+		var val = jQuery(this).val();
+		
+		clearTimeout(time);
+		time = setTimeout(function(){
+
+			jQuery.ajax({
+				url: pagelayer_ajax_url,
+				type: 'post',
+				data:{
+					'action' : 'wp-link-ajax',
+					'_ajax_linking_nonce' : pagelayer_internal_linking_nonce,
+					'search' : val,
+				},
+				success: function(response) {
+					
+					var data = jQuery.parseJSON(response);
+					var html = '';
+					//console.log('Link Data');console.log(response);
+					
+					if(pagelayer_empty(data)){
+						html = pagelayer_l('custom_url');
+						// Remove ID Holder
+						addID();
+					}else if(typeof data === 'object'){
+						
+						for(var key in data){
+							var vals = data[key];
+							html += '<div class="pagelayer-elp-link-item"  data-id="'+vals['ID']+'" data-permalink="'+vals['permalink']+'">'+
+								'<div class="pagelayer-elp-link-title">'+
+									'<span class="pagelayer-elp-link-item-title" title="'+vals['title']+'">'+vals['title']+'</span>'+
+									'<span class="pagelayer-elp-link-item-perma" title="'+vals['permalink']+'">'+vals['permalink']+'</span>'+
+								'</div>'+
+								'<div class="pagelayer-elp-link-info">'+
+									'<span title="'+vals['info']+'">'+vals['info']+'</span>'+
+								'</div>'+
+							'</div>';
+						}
+					}
+					
+					listWrap.html(html);
+				},
+				fail: function(data) {
+					listWrap.html('Some error occured in getting the link data');
+				}
+			});
+			
+		}, 200);
+		
+	});
+	
+	listWrap.on('click', function(e){
+		e.stopPropagation();
+		
+		var lEle = jQuery(e.target).closest('.pagelayer-elp-link-item');
+		
+		// IF item not found
+		if(lEle.length < 1){
+			return;
+		}
+		
+		var perma = lEle.attr('data-permalink');
+		var ID = lEle.attr('data-id');
+		
+		// Save and Render
+		row.find('.pagelayer-elp-link').val(perma);
+		_pagelayer_set_tmp_atts(row, '', perma);
+		_pagelayer_set_atts(row, ID);
+		listWrap.hide();
+		
+		// Show ID
+		addID(ID);
+	});
+	
+	pagelayer.gDocument.on('click', function(e){
+		listWrap.hide();
+	});
+  
 }
 
 // The Textarea property
@@ -1869,7 +2004,14 @@ function pagelayer_clear_editable(dontDestroy){
 function pagelayer_make_editable(jEle, e){
 	
 	// The parent element
-	var pEle = jEle.closest('.pagelayer-ele');
+	var pEle = jEle.closest('.pagelayer-ele, [pagelayer-ref-id]');
+	
+	// Mainly for editing table cells as pagelayer-ref-id is used by them
+	if(!pEle.hasClass('pagelayer-ele')){
+		var refID = pEle.attr('pagelayer-ref-id');
+		pEle = jQuery('[pagelayer-id="'+refID+'"]');
+	}
+	
 	var prop = jEle.attr('pagelayer-editable');
 	var eId = pagelayer_id(pEle)+'|'+jEle.attr('pagelayer-editable');// Editing ID
 	
@@ -2211,6 +2353,17 @@ function pagelayer_elp_modal(row, prop){
 	row.find('.pagelayer-elp-modal-close').on('click', function(){
 		wrapper.hide();
 	});
+	
+	// On click Pagelayer setting icon
+	wrapper.on('click', function(event){
+		var target = jQuery(event.target);
+		
+		if(target.closest('.pagelayer-elp-modal-wrap').length > 0){
+			return;
+		}
+		
+		wrapper.hide();
+	});
   
 };
 
@@ -2226,7 +2379,7 @@ function pagelayer_elp_color(row, prop){
 	
 	row.find('.pagelayer-elp-color-preview').css('background', prop.c['val']);
 	
-	var picker = new Picker({
+	var picker = new pagelayer_Picker({
 		parent : row.find('.pagelayer-elp-color-div')[0],
 		popup : 'left',
 		color : prop.c['val'],
@@ -2294,11 +2447,18 @@ function pagelayer_elp_spinner(row, prop){
 // The Group Property
 function pagelayer_elp_group(row, prop){
 	
+	var btnHidden = '';
+	
+	// Hide button, clone and delete
+	if(!pagelayer_empty(prop['hide'])){
+		btnHidden = 'pagelayer-hidden';
+	}
+	
 	// Remove the pagelayer-show-tab
 	row.removeAttr('pagelayer-show-tab');
 	
 	var div = '<div class="pagelayer-elp-group-div"></div>'+
-			'<center><button class="pagelayer-elp-button">'+prop['text']+'</button></center>';
+			'<center><button class="pagelayer-elp-button '+btnHidden+'">'+prop['text']+'</button></center>';
 	
 	row.append(div);
 	
@@ -2350,8 +2510,8 @@ function pagelayer_elp_group(row, prop){
 				'<div class="pagelayer-elp-group-item-head">'+
 					'<span class="pagelayer-elp-group-item-drag"><i class="pli pli-menu" /></span>'+
 					'<span class="pagelayer-elp-group-item-title">'+title+'</span>'+
-					'<span class="pagelayer-elp-group-item-clone"><i class="pli pli-clone" /></span>'+
-					'<span class="pagelayer-elp-group-item-del"><i class="pli pli-trashcan" /></span>'+
+					'<span class="pagelayer-elp-group-item-clone '+btnHidden+'"><i class="pli pli-clone" /></span>'+
+					'<span class="pagelayer-elp-group-item-del '+btnHidden+'"><i class="pli pli-trashcan" /></span>'+
 				'</div>'+
 				'<div class="pagelayer-elp-group-item-body"></div>'+
 			'</div>');
@@ -2442,6 +2602,10 @@ function pagelayer_elp_group(row, prop){
 	
 	// Handle click of the group
 	row.find('.pagelayer-elp-button').on('click', function(){
+		if('pro' in prop && pagelayer_empty(pagelayer_pro)){
+			pagelayer_pro_notice();
+			return;
+		}
 		add_item(row);
 	});
 	
@@ -2452,6 +2616,16 @@ function pagelayer_elp_group(row, prop){
 		show_item(id);
 	});
 };
+
+function pagelayer_pro_notice(){
+	var div = pagelayer.$$('.pagelayer-pro-notice');
+	
+	div.find('.pagelayer-pro-x').click(function(){
+		div.hide();
+	});
+	
+	div.show();
+}
 
 // Moving an element
 function pagelayer_moving_element(jEle, start_pos, end_pos){	
@@ -2613,7 +2787,7 @@ function pagelayer_elp_shadow(row, prop){
 	var preview = row.find('.pagelayer-elp-color-preview');	
 	preview.css('background', val[3]);
 	
-	var picker = new Picker({
+	var picker = new pagelayer_Picker({
 		parent : row.find('.pagelayer-elp-color-div')[0],
 		popup : 'left',
 		color : val[3],
@@ -2720,7 +2894,7 @@ function pagelayer_elp_box_shadow(row, prop){
 	var preview = row.find('.pagelayer-elp-color-preview');	
 	preview.css('background', val[3]);
 	
-	var picker = new Picker({
+	var picker = new pagelayer_Picker({
 		parent : row.find('.pagelayer-elp-color-div')[0],
 		popup : 'left',
 		color : val[3],
@@ -2873,7 +3047,7 @@ function pagelayer_elp_gradient(row, prop){
 		i = i+2;
 	});
 	
-	var picker1 = new Picker({
+	var picker1 = new pagelayer_Picker({
 		parent : row.find('.pagelayer-elp-gradient-color1')[0],
 		popup : 'left',
 		color : val[1],
@@ -2887,7 +3061,7 @@ function pagelayer_elp_gradient(row, prop){
 		_pagelayer_set_atts(row, val);
 	};
 	
-	var picker2 = new Picker({
+	var picker2 = new pagelayer_Picker({
 		parent : row.find('.pagelayer-elp-gradient-color2')[0],
 		popup : 'left',
 		color : val[3],
@@ -2901,7 +3075,7 @@ function pagelayer_elp_gradient(row, prop){
 		_pagelayer_set_atts(row, val);
 	};
 	
-	var picker3 = new Picker({
+	var picker3 = new pagelayer_Picker({
 		parent : row.find('.pagelayer-elp-gradient-color3')[0],
 		popup : 'left',
 		color : val[5],
@@ -2926,8 +3100,6 @@ function pagelayer_elp_gradient(row, prop){
 	});
 	
 }
-
-var pagelayer_fonts = ['', 'ABeeZee', 'Abel', 'Abhaya Libre', 'Abril Fatface', 'Aclonica', 'Acme', 'Actor', 'Adamina', 'Advent Pro', 'Aguafina Script', 'Akronim', 'Aladin', 'Aldrich', 'Alef', 'Alegreya', 'Alegreya SC', 'Alegreya Sans', 'Alegreya Sans SC', 'Aleo', 'Alex Brush', 'Alfa Slab One', 'Alice', 'Alike', 'Alike Angular', 'Allan', 'Allerta', 'Allerta Stencil', 'Allura', 'Almendra', 'Almendra Display', 'Almendra SC', 'Amarante', 'Amaranth', 'Amatic SC', 'Amethysta', 'Amiko', 'Amiri', 'Amita', 'Anaheim', 'Andada', 'Andika', 'Angkor', 'Annie Use Your Telescope', 'Anonymous Pro', 'Antic', 'Antic Didone', 'Antic Slab', 'Anton', 'Arapey', 'Arbutus', 'Arbutus Slab', 'Architects Daughter', 'Archivo', 'Archivo Black', 'Archivo Narrow', 'Aref Ruqaa', 'Arima Madurai', 'Arimo', 'Arizonia', 'Armata', 'Arsenal', 'Artifika', 'Arvo', 'Arya', 'Asap', 'Asap Condensed', 'Asar', 'Asset', 'Assistant', 'Astloch', 'Asul', 'Athiti', 'Atma', 'Atomic Age', 'Aubrey', 'Audiowide', 'Autour One', 'Average', 'Average Sans', 'Averia Gruesa Libre', 'Averia Libre', 'Averia Sans Libre', 'Averia Serif Libre', 'B612', 'B612 Mono', 'Bad Script', 'Bahiana', 'Bai Jamjuree', 'Baloo', 'Baloo Bhai', 'Baloo Bhaijaan', 'Baloo Bhaina', 'Baloo Chettan', 'Baloo Da', 'Baloo Paaji', 'Baloo Tamma', 'Baloo Tammudu', 'Baloo Thambi', 'Balthazar', 'Bangers', 'Barlow', 'Barlow Condensed', 'Barlow Semi Condensed', 'Barrio', 'Basic', 'Battambang', 'Baumans', 'Bayon', 'Belgrano', 'Bellefair', 'Belleza', 'Bellota', 'BenchNine', 'Bentham', 'Berkshire Swash', 'Bevan', 'Bigelow Rules', 'Bigshot One', 'Bilbo', 'Bilbo Swash Caps', 'BioRhyme', 'BioRhyme Expanded', 'Biryani', 'Bitter', 'Black And White Picture', 'Black Han Sans', 'Black Ops One', 'Bokor', 'Bonbon', 'Boogaloo', 'Bowlby One', 'Bowlby One SC', 'Brawler', 'Bree Serif', 'Bubblegum Sans', 'Bubbler One', 'Buda', 'Buenard', 'Bungee', 'Bungee Hairline', 'Bungee Inline', 'Bungee Outline', 'Bungee Shade', 'Butcherman', 'Butterfly Kids', 'Cabin', 'Cabin Condensed', 'Cabin Sketch', 'Caesar Dressing', 'Cagliostro', 'Cairo', 'Calligraffitti', 'Cambay', 'Cambo', 'Candal', 'Cantarell', 'Cantata One', 'Cantora One', 'Capriola', 'Cardo', 'Carme', 'Carrois Gothic', 'Carrois Gothic SC', 'Carter One', 'Catamaran', 'Caudex', 'Caveat', 'Caveat Brush', 'Cedarville Cursive', 'Ceviche One', 'Chakra Petch', 'Changa', 'Changa One', 'Chango', 'Charm', 'Charmonman', 'Chathura', 'Chau Philomene One', 'Chela One', 'Chelsea Market', 'Chenla', 'Cherry Cream Soda', 'Cherry Swash', 'Chewy', 'Chicle', 'Chivo', 'Chonburi', 'Cinzel', 'Cinzel Decorative', 'Clicker Script', 'Coda', 'Coda Caption', 'Codystar', 'Coiny', 'Combo', 'Comfortaa', 'Coming Soon', 'Concert One', 'Condiment', 'Content', 'Contrail One', 'Convergence', 'Cookie', 'Copse', 'Corben', 'Cormorant', 'Cormorant Garamond', 'Cormorant Infant', 'Cormorant SC', 'Cormorant Unicase', 'Cormorant Upright', 'Courgette', 'Cousine', 'Coustard', 'Covered By Your Grace', 'Crafty Girls', 'Creepster', 'Crete Round', 'Crimson Text', 'Croissant One', 'Crushed', 'Cuprum', 'Cute Font', 'Cutive', 'Cutive Mono', 'Damion', 'Dancing Script', 'Dangrek', 'David Libre', 'Dawning of a New Day', 'Days One', 'Dekko', 'Delius', 'Delius Swash Caps', 'Delius Unicase', 'Della Respira', 'Denk One', 'Devonshire', 'Dhurjati', 'Didact Gothic', 'Diplomata', 'Diplomata SC', 'Do Hyeon', 'Dokdo', 'Domine', 'Donegal One', 'Doppio One', 'Dorsa', 'Dosis', 'Dr Sugiyama', 'Duru Sans', 'Dynalight', 'EB Garamond', 'Eagle Lake', 'East Sea Dokdo', 'Eater', 'Economica', 'Eczar', 'El Messiri', 'Electrolize', 'Elsie', 'Elsie Swash Caps', 'Emblema One', 'Emilys Candy', 'Encode Sans', 'Encode Sans Condensed', 'Encode Sans Expanded', 'Encode Sans Semi Condensed', 'Encode Sans Semi Expanded', 'Engagement', 'Englebert', 'Enriqueta', 'Erica One', 'Esteban', 'Euphoria Script', 'Ewert', 'Exo', 'Exo 2', 'Expletus Sans', 'Fahkwang', 'Fanwood Text', 'Farsan', 'Fascinate', 'Fascinate Inline', 'Faster One', 'Fasthand', 'Fauna One', 'Faustina', 'Federant', 'Federo', 'Felipa', 'Fenix', 'Finger Paint', 'Fira Mono', 'Fira Sans', 'Fira Sans Condensed', 'Fira Sans Extra Condensed', 'Fjalla One', 'Fjord One', 'Flamenco', 'Flavors', 'Fondamento', 'Fontdiner Swanky', 'Forum', 'Francois One', 'Frank Ruhl Libre', 'Freckle Face', 'Fredericka the Great', 'Fredoka One', 'Freehand', 'Fresca', 'Frijole', 'Fruktur', 'Fugaz One', 'GFS Didot', 'GFS Neohellenic', 'Gabriela', 'Gaegu', 'Gafata', 'Galada', 'Galdeano', 'Galindo', 'Gamja Flower', 'Gentium Basic', 'Gentium Book Basic', 'Geo', 'Geostar', 'Geostar Fill', 'Germania One', 'Gidugu', 'Gilda Display', 'Give You Glory', 'Glass Antiqua', 'Glegoo', 'Gloria Hallelujah', 'Goblin One', 'Gochi Hand', 'Gorditas', 'Gothic A1', 'Goudy Bookletter 1911', 'Graduate', 'Grand Hotel', 'Gravitas One', 'Great Vibes', 'Griffy', 'Gruppo', 'Gudea', 'Gugi', 'Gurajada', 'Habibi', 'Halant', 'Hammersmith One', 'Hanalei', 'Hanalei Fill', 'Handlee', 'Hanuman', 'Happy Monkey', 'Harmattan', 'Headland One', 'Heebo', 'Henny Penny', 'Herr Von Muellerhoff', 'Hi Melody', 'Hind', 'Hind Guntur', 'Hind Madurai', 'Hind Siliguri', 'Hind Vadodara', 'Holtwood One SC', 'Homemade Apple', 'Homenaje', 'IBM Plex Mono', 'IBM Plex Sans', 'IBM Plex Sans Condensed', 'IBM Plex Serif', 'IM Fell DW Pica', 'IM Fell DW Pica SC', 'IM Fell Double Pica', 'IM Fell Double Pica SC', 'IM Fell English', 'IM Fell English SC', 'IM Fell French Canon', 'IM Fell French Canon SC', 'IM Fell Great Primer', 'IM Fell Great Primer SC', 'Iceberg', 'Iceland', 'Imprima', 'Inconsolata', 'Inder', 'Indie Flower', 'Inika', 'Inknut Antiqua', 'Irish Grover', 'Istok Web', 'Italiana', 'Italianno', 'Itim', 'Jacques Francois', 'Jacques Francois Shadow', 'Jaldi', 'Jim Nightshade', 'Jockey One', 'Jolly Lodger', 'Jomhuria', 'Josefin Sans', 'Josefin Slab', 'Joti One', 'Jua', 'Judson', 'Julee', 'Julius Sans One', 'Junge', 'Jura', 'Just Another Hand', 'Just Me Again Down Here', 'K2D', 'Kadwa', 'Kalam', 'Kameron', 'Kanit', 'Kantumruy', 'Karla', 'Karma', 'Katibeh', 'Kaushan Script', 'Kavivanar', 'Kavoon', 'Kdam Thmor', 'Keania One', 'Kelly Slab', 'Kenia', 'Khand', 'Khmer', 'Khula', 'Kirang Haerang', 'Kite One', 'Knewave', 'KoHo', 'Kodchasan', 'Kosugi', 'Kosugi Maru', 'Kotta One', 'Koulen', 'Kranky', 'Kreon', 'Kristi', 'Krona One', 'Krub', 'Kumar One', 'Kumar One Outline', 'Kurale', 'La Belle Aurore', 'Laila', 'Lakki Reddy', 'Lalezar', 'Lancelot', 'Lateef', 'Lato', 'League Script', 'Leckerli One', 'Ledger', 'Lekton', 'Lemon', 'Lemonada', 'Libre Barcode 128', 'Libre Barcode 128 Text', 'Libre Barcode 39', 'Libre Barcode 39 Extended', 'Libre Barcode 39 Extended Text', 'Libre Barcode 39 Text', 'Libre Baskerville', 'Libre Franklin', 'Life Savers', 'Lilita One', 'Lily Script One', 'Limelight', 'Linden Hill', 'Lobster', 'Lobster Two', 'Londrina Outline', 'Londrina Shadow', 'Londrina Sketch', 'Londrina Solid', 'Lora', 'Love Ya Like A Sister', 'Loved by the King', 'Lovers Quarrel', 'Luckiest Guy', 'Lusitana', 'Lustria', 'M PLUS 1p', 'M PLUS Rounded 1c', 'Macondo', 'Macondo Swash Caps', 'Mada', 'Magra', 'Maiden Orange', 'Maitree', 'Major Mono Display', 'Mako', 'Mali', 'Mallanna', 'Mandali', 'Manuale', 'Marcellus', 'Marcellus SC', 'Marck Script', 'Margarine', 'Markazi Text', 'Marko One', 'Marmelad', 'Martel', 'Martel Sans', 'Marvel', 'Mate', 'Mate SC', 'Maven Pro', 'McLaren', 'Meddon', 'MedievalSharp', 'Medula One', 'Meera Inimai', 'Megrim', 'Meie Script', 'Merienda', 'Merienda One', 'Merriweather', 'Merriweather Sans', 'Metal', 'Metal Mania', 'Metamorphous', 'Metrophobic', 'Michroma', 'Milonga', 'Miltonian', 'Miltonian Tattoo', 'Mina', 'Miniver', 'Miriam Libre', 'Mirza', 'Miss Fajardose', 'Mitr', 'Modak', 'Modern Antiqua', 'Mogra', 'Molengo', 'Molle', 'Monda', 'Monofett', 'Monoton', 'Monsieur La Doulaise', 'Montaga', 'Montez', 'Montserrat', 'Montserrat Alternates', 'Montserrat Subrayada', 'Moul', 'Moulpali', 'Mountains of Christmas', 'Mouse Memoirs', 'Mr Bedfort', 'Mr Dafoe', 'Mr De Haviland', 'Mrs Saint Delafield', 'Mrs Sheppards', 'Mukta', 'Mukta Mahee', 'Mukta Malar', 'Mukta Vaani', 'Muli', 'Mystery Quest', 'NTR', 'Nanum Brush Script', 'Nanum Gothic', 'Nanum Gothic Coding', 'Nanum Myeongjo', 'Nanum Pen Script', 'Neucha', 'Neuton', 'New Rocker', 'News Cycle', 'Niconne', 'Niramit', 'Nixie One', 'Nobile', 'Nokora', 'Norican', 'Nosifer', 'Notable', 'Nothing You Could Do', 'Noticia Text', 'Noto Sans', 'Noto Sans JP', 'Noto Sans KR', 'Noto Sans SC', 'Noto Sans TC', 'Noto Serif', 'Noto Serif JP', 'Noto Serif KR', 'Noto Serif SC', 'Noto Serif TC', 'Nova Cut', 'Nova Flat', 'Nova Mono', 'Nova Oval', 'Nova Round', 'Nova Script', 'Nova Slim', 'Nova Square', 'Numans', 'Nunito', 'Nunito Sans', 'Odor Mean Chey', 'Offside', 'Old Standard TT', 'Oldenburg', 'Oleo Script', 'Oleo Script Swash Caps', 'Open Sans', 'Open Sans Condensed', 'Oranienbaum', 'Orbitron', 'Oregano', 'Orienta', 'Original Surfer', 'Oswald', 'Over the Rainbow', 'Overlock', 'Overlock SC', 'Overpass', 'Overpass Mono', 'Ovo', 'Oxygen', 'Oxygen Mono', 'PT Mono', 'PT Sans', 'PT Sans Caption', 'PT Sans Narrow', 'PT Serif', 'PT Serif Caption', 'Pacifico', 'Padauk', 'Palanquin', 'Palanquin Dark', 'Pangolin', 'Paprika', 'Parisienne', 'Passero One', 'Passion One', 'Pathway Gothic One', 'Patrick Hand', 'Patrick Hand SC', 'Pattaya', 'Patua One', 'Pavanam', 'Paytone One', 'Peddana', 'Peralta', 'Permanent Marker', 'Petit Formal Script', 'Petrona', 'Philosopher', 'Piedra', 'Pinyon Script', 'Pirata One', 'Plaster', 'Play', 'Playball', 'Playfair Display', 'Playfair Display SC', 'Podkova', 'Poiret One', 'Poller One', 'Poly', 'Pompiere', 'Pontano Sans', 'Poor Story', 'Poppins', 'Port Lligat Sans', 'Port Lligat Slab', 'Pragati Narrow', 'Prata', 'Preahvihear', 'Press Start 2P', 'Pridi', 'Princess Sofia', 'Prociono', 'Prompt', 'Prosto One', 'Proza Libre', 'Puritan', 'Purple Purse', 'Quando', 'Quantico', 'Quattrocento', 'Quattrocento Sans', 'Questrial', 'Quicksand', 'Quintessential', 'Qwigley', 'Racing Sans One', 'Radley', 'Rajdhani', 'Rakkas', 'Raleway', 'Raleway Dots', 'Ramabhadra', 'Ramaraja', 'Rambla', 'Rammetto One', 'Ranchers', 'Rancho', 'Ranga', 'Rasa', 'Rationale', 'Ravi Prakash', 'Redressed', 'Reem Kufi', 'Reenie Beanie', 'Revalia', 'Rhodium Libre', 'Ribeye', 'Ribeye Marrow', 'Righteous', 'Risque', 'Roboto', 'Roboto Condensed', 'Roboto Mono', 'Roboto Slab', 'Rochester', 'Rock Salt', 'Rokkitt', 'Romanesco', 'Ropa Sans', 'Rosario', 'Rosarivo', 'Rouge Script', 'Rozha One', 'Rubik', 'Rubik Mono One', 'Ruda', 'Rufina', 'Ruge Boogie', 'Ruluko', 'Rum Raisin', 'Ruslan Display', 'Russo One', 'Ruthie', 'Rye', 'Sacramento', 'Sahitya', 'Sail', 'Saira', 'Saira Condensed', 'Saira Extra Condensed', 'Saira Semi Condensed', 'Salsa', 'Sanchez', 'Sancreek', 'Sansita', 'Sarabun', 'Sarala', 'Sarina', 'Sarpanch', 'Satisfy', 'Sawarabi Gothic', 'Sawarabi Mincho', 'Scada', 'Scheherazade', 'Schoolbell', 'Scope One', 'Seaweed Script', 'Secular One', 'Sedgwick Ave', 'Sedgwick Ave Display', 'Sen', 'Sevillana', 'Seymour One', 'Shadows Into Light', 'Shadows Into Light Two', 'Shanti', 'Share', 'Share Tech', 'Share Tech Mono', 'Shojumaru', 'Short Stack', 'Shrikhand', 'Siemreap', 'Sigmar One', 'Signika', 'Signika Negative', 'Simonetta', 'Sintony', 'Sirin Stencil', 'Six Caps', 'Skranji', 'Slabo 13px', 'Slabo 27px', 'Slackey', 'Smokum', 'Smythe', 'Sniglet', 'Snippet', 'Snowburst One', 'Sofadi One', 'Sofia', 'Song Myung', 'Sonsie One', 'Sorts Mill Goudy', 'Source Code Pro', 'Source Sans Pro', 'Source Serif Pro', 'Space Mono', 'Special Elite', 'Spectral', 'Spectral SC', 'Spicy Rice', 'Spinnaker', 'Spirax', 'Squada One', 'Sree Krushnadevaraya', 'Sriracha', 'Srisakdi', 'Staatliches', 'Stalemate', 'Stalinist One', 'Stardos Stencil', 'Stint Ultra Condensed', 'Stint Ultra Expanded', 'Stoke', 'Strait', 'Stylish', 'Sue Ellen Francisco', 'Suez One', 'Sumana', 'Sunflower', 'Sunshiney', 'Supermercado One', 'Sura', 'Suranna', 'Suravaram', 'Suwannaphum', 'Swanky and Moo Moo', 'Syncopate', 'Tajawal', 'Tangerine', 'Taprom', 'Tauri', 'Taviraj', 'Teko', 'Telex', 'Tenali Ramakrishna', 'Tenor Sans', 'Text Me One', 'Thasadith', 'The Girl Next Door', 'Tienne', 'Tillana', 'Timmana', 'Tinos', 'Titan One', 'Titillium Web', 'Trade Winds', 'Trirong', 'Trocchi', 'Trochut', 'Trykker', 'Tulpen One', 'Ubuntu', 'Ubuntu Condensed', 'Ubuntu Mono', 'Ultra', 'Uncial Antiqua', 'Underdog', 'Unica One', 'UnifrakturCook', 'UnifrakturMaguntia', 'Unkempt', 'Unlock', 'Unna', 'VT323', 'Vampiro One', 'Varela', 'Varela Round', 'Vast Shadow', 'Vesper Libre', 'Vibur', 'Vidaloka', 'Viga', 'Voces', 'Volkhov', 'Vollkorn', 'Vollkorn SC', 'Voltaire', 'Waiting for the Sunrise', 'Wallpoet', 'Walter Turncoat', 'Warnes', 'Wellfleet', 'Wendy One', 'Wire One', 'Work Sans', 'Yanone Kaffeesatz', 'Yantramanav', 'Yatra One', 'Yellowtail', 'Yeon Sung', 'Yeseva One', 'Yesteryear', 'Yrsa', 'ZCOOL KuaiLe', 'ZCOOL QingKe HuangYou', 'ZCOOL XiaoWei', 'Zeyada', 'Zilla Slab', 'Zilla Slab Highlight'];
 
 function pagelayer_elp_font_family(row, prop){
 	
@@ -3007,7 +3179,7 @@ function pagelayer_elp_typography(row, prop){
 	var font_option = function(val, setVal){
 		var selected = (val != setVal) ? '' : 'selected="selected"';
 		var lang = pagelayer_empty(val) ? 'Default' : val;
-		return '<span style="font-family:'+lang+'" value="'+val+'" '+selected+'>'+ lang +'</span>';
+		return '<span value="'+val+'" '+selected+'>'+ lang +'</span>';
 	}
 	
 	var div = '<span class="pagelayer-prop-edit"><i class="pli pli-pencil"></i></span>'+
@@ -3022,7 +3194,8 @@ function pagelayer_elp_typography(row, prop){
 	jQuery.each(select['fonts'],function(key, value){
 		div += font_option(value, val[0]);
 	});
-			div +='</div></div>'+
+	
+	div +='</div></div>'+
 		'</div>'+
 		'<div class="pagelayer-elp-typo pagelayer-elp-typo-size">'+
 			'<label class="pagelayer-elp-label">'+pagelayer_l('font_size')+'</label>'+
